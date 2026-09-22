@@ -18,7 +18,13 @@ def create_app(config_name=None):
     init_db_app(app)
 
     # Enable Cross-Origin Resource Sharing for React frontend communication
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    cors_origins_config = app.config.get("CORS_ORIGINS", "*")
+    if cors_origins_config and cors_origins_config != "*":
+        allowed_origins = [o.strip() for o in cors_origins_config.split(",") if o.strip()]
+    else:
+        allowed_origins = "*"
+
+    CORS(app, resources={r"/api/*": {"origins": allowed_origins}}, supports_credentials=True)
 
     # Register blueprints
     from app.routes.health import health_bp

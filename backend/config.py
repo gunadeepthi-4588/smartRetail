@@ -18,6 +18,9 @@ class Config:
     DB_PASSWORD = os.getenv("DB_PASSWORD", "")
     DB_NAME = os.getenv("DB_NAME", "smart_retail_db")
 
+    # Security & CORS Settings
+    CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")
+
     # Business Logic Defaults
     DEFAULT_CURRENCY = os.getenv("DEFAULT_CURRENCY", "INR")
     DEFAULT_CURRENCY_SYMBOL = os.getenv("DEFAULT_CURRENCY_SYMBOL", "₹")
