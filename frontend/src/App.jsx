@@ -1,49 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import { getBackendHealth } from './services/api';
+import AppLayout from './components/layout/AppLayout';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Inventory from './pages/Inventory';
+import Sales from './pages/Sales';
+import Analytics from './pages/Analytics';
+import Forecast from './pages/Forecast';
+import Monitoring from './pages/Monitoring';
+import Settings from './pages/Settings';
 
 export default function App() {
-  const [backendStatus, setBackendStatus] = useState({ status: 'checking', service: 'Connecting to Flask API...' });
+  // State-driven routing for single-page application
+  const [currentRoute, setCurrentRoute] = useState(() => {
+    const path = window.location.pathname.replace(/^\//, '');
+    return path || 'dashboard';
+  });
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
 
+  // Sync browser back/forward buttons with route state
   useEffect(() => {
-    getBackendHealth()
-      .then((data) => setBackendStatus(data))
-      .catch((err) => setBackendStatus({ status: 'offline', error: err.message }));
+    const handlePopState = () => {
+      const path = window.location.pathname.replace(/^\//, '');
+      setCurrentRoute(path || 'dashboard');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  const navigateTo = (route) => {
+    setCurrentRoute(route);
+    window.history.pushState({}, '', `/${route === 'dashboard' ? '' : route}`);
+    window.scrollTo(0, 0);
+  };
+
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+    navigateTo('dashboard');
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    navigateTo('login');
+  };
+
+  if (!isAuthenticated || currentRoute === 'login') {
+    return <Login onLoginSuccess={handleLogin} />;
+  }
+
   return (
-    <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-      <header className="card" style={{ maxWidth: '640px', width: '100%', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '2rem', marginBottom: '0.75rem', background: 'linear-gradient(135deg, #818cf8, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          SmartRetail Platform
-        </h1>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-          End-to-End Retail Inventory Intelligence & Demand Forecasting
-        </p>
-
-        <section style={{ padding: '1rem', background: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', textAlign: 'left' }}>
-          <h2 style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-            System Architecture Status
-          </h2>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.875rem' }}>Frontend Application</span>
-            <span className="badge badge-success">Vite + React Active</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.875rem' }}>Flask REST API Bridge</span>
-            {backendStatus.status === 'online' ? (
-              <span className="badge badge-success">API Online</span>
-            ) : backendStatus.status === 'checking' ? (
-              <span className="badge badge-warning">Checking...</span>
-            ) : (
-              <span className="badge badge-danger">Offline / Ready for Phase 4</span>
-            )}
-          </div>
-        </section>
-
-        <footer style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          Phase 2 Project Setup Complete • Single Store Architecture
-        </footer>
-      </header>
-    </main>
+    <AppLayout
+      activeRoute={currentRoute}
+      onNavigate={navigateTo}
+      onLogout={handleLogout}
+    >
+      {currentRoute === 'dashboard' && <Dashboard onNavigate={navigateTo} />}
+      {currentRoute === 'inventory' && <Inventory />}
+      {currentRoute === 'sales' && <Sales />}
+      {currentRoute === 'analytics' && <Analytics />}
+      {currentRoute === 'forecast' && <Forecast />}
+      {currentRoute === 'monitoring' && <Monitoring />}
+      {currentRoute === 'settings' && <Settings />}
+    </AppLayout>
   );
 }
