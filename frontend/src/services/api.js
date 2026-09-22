@@ -4,10 +4,12 @@
  * Never connects directly to MySQL — always routes through Flask REST APIs.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const rawBase = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE_URL = rawBase.replace(/\/+$/, '');
 
 export async function fetchApi(endpoint, options = {}) {
-  const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${API_BASE_URL}${cleanEndpoint}`;
   
   const headers = {
     'Content-Type': 'application/json',
