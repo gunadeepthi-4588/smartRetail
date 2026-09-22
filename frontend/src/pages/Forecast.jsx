@@ -25,7 +25,7 @@ import {
 import { Line } from 'react-chartjs-2';
 import KpiCard from '../components/common/KpiCard';
 import Badge from '../components/common/Badge';
-import { getProducts, getProductForecast, generateForecast } from '../services/api';
+import { getProducts, getProductForecast, generateForecast, getSingleInventoryIntelligence } from '../services/api';
 
 ChartJS.register(
   CategoryScale,
@@ -46,6 +46,7 @@ export default function Forecast() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
   const [forecastData, setForecastData] = useState(null);
+  const [recommendationData, setRecommendationData] = useState(null);
 
   // 1. Fetch products list on mount
   useEffect(() => {
@@ -72,8 +73,14 @@ export default function Forecast() {
       setLoading(true);
       setError(null);
       try {
-        const res = await getProductForecast(selectedProductId, horizon);
-        setForecastData(res.data);
+        const [fRes, rRes] = await Promise.all([
+          getProductForecast(selectedProductId, horizon),
+          getSingleInventoryIntelligence(selectedProductId, { days: horizon }).catch(() => null)
+        ]);
+        setForecastData(fRes.data);
+        if (rRes && rRes.data) {
+          setRecommendationData(rRes.data);
+        }
       } catch (err) {
         setError(err.message || 'Failed to fetch stored forecast.');
       } finally {
@@ -315,6 +322,47 @@ export default function Forecast() {
           iconColor="#3b82f6"
         />
       </div>
+
+      {/* Decision-Support Recommendation Summary Card */}
+      {recommendationData && (
+        <div className="card" style={{ marginBottom: '1.5rem', borderLeft: `4px solid ${recommendationData.recommended_quantity > 0 ? 'var(--primary-400)' : 'var(--success-500)'}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Inventory Intelligence Summary ({horizon}D Planning Horizon)
+                </span>
+                <span className="badge" style={{
+                  background: recommendationData.recommended_quantity > 0 ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.2)',
+                  color: recommendationData.recommended_quantity > 0 ? '#818cf8' : 'var(--success-500)'
+                }}>
+                  {recommendationData.recommendation_status}
+                </span>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+                {recommendationData.explanation?.reorder?.reason}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Current Stock</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{recommendationData.current_stock} units</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Safety Buffer</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{recommendationData.safety_stock} units</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Reorder Quantity</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: recommendationData.recommended_quantity > 0 ? 'var(--primary-400)' : 'var(--text-muted)' }}>
+                  {recommendationData.recommended_quantity > 0 ? `+${recommendationData.recommended_quantity} units` : '0 units'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Forecast Chart Visualizer */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
