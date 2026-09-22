@@ -2,21 +2,28 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Search, 
   Filter, 
-  Plus, 
-  Edit2, 
-  Eye, 
   RefreshCw, 
   AlertCircle, 
   CheckCircle2, 
   Boxes, 
   AlertTriangle, 
   PackageX, 
-  TrendingUp 
+  TrendingUp,
+  Brain,
+  ShieldCheck,
+  Sparkles,
+  ArrowRight,
+  Clock,
+  Layers
 } from 'lucide-react';
-import { getInventory } from '../services/api';
+import { getInventory, getInventoryIntelligence } from '../services/api';
 import Badge from '../components/common/Badge';
 
 export default function Inventory() {
+  const [activeTab, setActiveTab] = useState('intelligence'); // 'intelligence' or 'catalog'
+  const [horizon, setHorizon] = useState(7); // 7 or 30 days
+  
+  // Catalog State
   const [inventoryList, setInventoryList] = useState([]);
   const [summary, setSummary] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,7 +33,13 @@ export default function Inventory() {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
 
-  // Fetch real inventory data from Flask REST API -> MySQL
+  // Intelligence State
+  const [intelligenceList, setIntelligenceList] = useState([]);
+  const [isIntelligenceLoading, setIsIntelligenceLoading] = useState(false);
+  const [intelligenceError, setIntelligenceError] = useState(null);
+  const [intelStatusFilter, setIntelStatusFilter] = useState('All');
+
+  // 1. Fetch Standard Inventory
   const loadInventory = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -39,255 +52,348 @@ export default function Inventory() {
       setInventoryList(response.data || []);
       setSummary(response.summary || null);
     } catch (err) {
-      console.error('Failed to load inventory from API:', err);
-      setError(err.message || 'Unable to load inventory records. Please check the backend connection.');
+      setError(err.message || 'Unable to load inventory records.');
     } finally {
       setIsLoading(false);
     }
   }, [searchTerm, categoryFilter, statusFilter]);
 
-  // Load on mount and when filters change (with debouncing for search input)
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      loadInventory();
-    }, 250);
+  // 2. Fetch Inventory Intelligence & Reorder Engine
+  const loadIntelligence = useCallback(async () => {
+    setIsIntelligenceLoading(true);
+    setIntelligenceError(null);
+    try {
+      const res = await getInventoryIntelligence({ days: horizon });
+      setIntelligenceList(res.data || []);
+    } catch (err) {
+      setIntelligenceError(err.message || 'Unable to load inventory intelligence.');
+    } finally {
+      setIsIntelligenceLoading(false);
+    }
+  }, [horizon]);
 
-    return () => clearTimeout(handler);
-  }, [loadInventory]);
+  useEffect(() => {
+    if (activeTab === 'catalog') {
+      const handler = setTimeout(() => {
+        loadInventory();
+      }, 200);
+      return () => clearTimeout(handler);
+    } else {
+      loadIntelligence();
+    }
+  }, [activeTab, loadInventory, loadIntelligence]);
+
+  // Filtered intelligence list
+  const filteredIntelligence = intelligenceList.filter((item) => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          item.sku.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = intelStatusFilter === 'All' ? true : 
+                          intelStatusFilter === 'REORDER' ? item.recommendation_status === 'REORDER' :
+                          intelStatusFilter === 'STOCKOUT_RISK' ? item.stockout_risk :
+                          intelStatusFilter === 'OVERSTOCK' ? item.overstock_risk : true;
+    return matchesSearch && matchesStatus;
+  });
+
+  const totalReorderItems = intelligenceList.filter((i) => i.recommendation_status === 'REORDER').length;
+  const totalStockoutRisks = intelligenceList.filter((i) => i.stockout_risk).length;
+  const totalOverstocked = intelligenceList.filter((i) => i.overstock_risk).length;
 
   return (
     <div>
-      {/* Live Connection Banner */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0.75rem 1.25rem',
-        background: 'rgba(16, 185, 129, 0.08)',
-        border: '1px solid rgba(16, 185, 129, 0.25)',
-        borderRadius: 'var(--radius-md)',
-        fontSize: '0.85rem',
-        color: 'var(--success-500)',
-        marginBottom: '1.5rem'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <CheckCircle2 size={16} />
-          <span><strong>End-to-End Connected</strong>: React UI fetching live data via <code>GET /api/inventory</code> from MySQL.</span>
-        </div>
-        <button 
-          className="btn btn-secondary btn-sm" 
-          onClick={loadInventory} 
-          disabled={isLoading}
-          style={{ padding: '0.25rem 0.65rem', fontSize: '0.75rem' }}
-        >
-          <RefreshCw size={12} className={isLoading ? 'spin' : ''} />
-          <span>Refresh</span>
-        </button>
-      </div>
-
-      {/* Dynamic Summary Cards (From Real MySQL Aggregates) */}
-      {summary && (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '1rem',
-          marginBottom: '1.5rem'
-        }}>
-          <div className="card" style={{ padding: '1rem' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
-              Total Stock Valuation
-            </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--primary-400)', marginTop: '0.25rem' }}>
-              ₹{summary.total_valuation_cost?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0.00'}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-              At wholesale cost price
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: '1rem' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
-              Low Stock Warnings
-            </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--warning-500)', marginTop: '0.25rem' }}>
-              {summary.low_stock_count || 0} items
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-              Below safety buffer
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: '1rem' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
-              Overstocked Items
-            </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--info-500)', marginTop: '0.25rem' }}>
-              {summary.overstocked_count || 0} items
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-              Above max stock level
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: '1rem' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
-              Active SKUs
-            </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '0.25rem' }}>
-              {inventoryList.length} items
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-              In catalog database
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Search & Filtering Controls */}
-      <div className="controls-bar">
-        <div style={{ display: 'flex', gap: '0.75rem', flex: 1, flexWrap: 'wrap' }}>
-          {/* Search by Name or SKU */}
-          <div className="search-input-wrapper">
-            <Search size={16} className="search-icon" />
-            <input
-              type="text"
-              className="form-input search-input"
-              placeholder="Search product name or SKU..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          {/* Category Filter */}
-          <select
-            className="form-select"
-            style={{ width: 'auto', minWidth: '160px' }}
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-          >
-            <option value="All">All Categories</option>
-            <option value="Beverages">Beverages</option>
-            <option value="Snacks">Snacks</option>
-            <option value="Staples">Staples</option>
-            <option value="Personal Care">Personal Care</option>
-            <option value="Household">Household</option>
-          </select>
-
-          {/* Stock Status Filter */}
-          <select
-            className="form-select"
-            style={{ width: 'auto', minWidth: '160px' }}
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="All">All Stock Statuses</option>
-            <option value="healthy">Healthy Stock</option>
-            <option value="low">Low Stock (Alert)</option>
-            <option value="overstocked">Overstocked</option>
-            <option value="out_of_stock">Out of Stock</option>
-          </select>
-        </div>
-
-        {/* Add Product Trigger (Coming soon placeholder for Phase 7) */}
-        <button 
-          className="btn btn-secondary" 
-          title="Product CRUD modal will activate in later phase"
-          style={{ opacity: 0.8 }}
-          onClick={() => alert('Product addition modal will be enabled in subsequent CRUD enhancements. Read operations are fully live!')}
-        >
-          <Plus size={16} />
-          <span>Add Product</span>
-        </button>
-      </div>
-
-      {/* Main Content States: Loading | Error | Empty | Table */}
-      {isLoading && (
-        <div className="card" style={{ textAlign: 'center', padding: '3.5rem 1rem' }}>
-          <RefreshCw size={32} className="spin" style={{ margin: '0 auto 1rem', color: 'var(--primary-400)' }} />
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '0.25rem' }}>Loading Inventory from MySQL...</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Fetching real-time stock levels through Flask REST API</p>
-        </div>
-      )}
-
-      {!isLoading && error && (
-        <div className="card" style={{ textAlign: 'center', padding: '3.5rem 1rem', borderColor: 'var(--danger-500)' }}>
-          <AlertCircle size={36} color="var(--danger-500)" style={{ margin: '0 auto 1rem' }} />
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--danger-500)' }}>Unable to Load Inventory</h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', maxWidth: '480px', margin: '0 auto 1.5rem' }}>
-            {error}
+      {/* Header & View Switcher */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>Inventory Management & Intelligence</h1>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 0' }}>
+            Decision-support reorder engine, lead-time demand buffers, and risk monitoring
           </p>
-          <button className="btn btn-primary" onClick={loadInventory}>
-            <RefreshCw size={14} />
-            <span>Retry Connection</span>
-          </button>
         </div>
-      )}
 
-      {!isLoading && !error && inventoryList.length === 0 && (
-        <div className="card" style={{ textAlign: 'center', padding: '3.5rem 1rem' }}>
-          <PackageX size={36} color="var(--text-muted)" style={{ margin: '0 auto 1rem' }} />
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '0.25rem' }}>No Products Found</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
-            No inventory items matched your search "{searchTerm}" or active filter selections.
-          </p>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Main Tab Toggle */}
+          <div style={{ display: 'flex', background: 'var(--bg-surface)', padding: '0.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+            <button
+              className={`btn btn-sm ${activeTab === 'intelligence' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ border: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}
+              onClick={() => setActiveTab('intelligence')}
+            >
+              <Brain size={14} />
+              <span>Inventory Intelligence ({totalReorderItems} Reorders)</span>
+            </button>
+            <button
+              className={`btn btn-sm ${activeTab === 'catalog' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ border: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}
+              onClick={() => setActiveTab('catalog')}
+            >
+              <Boxes size={14} />
+              <span>Stock Catalog</span>
+            </button>
+          </div>
+
+          {activeTab === 'intelligence' && (
+            <div style={{ display: 'flex', background: 'var(--bg-surface)', padding: '0.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+              {[7, 30].map((h) => (
+                <button
+                  key={h}
+                  className={`btn btn-sm ${horizon === h ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ border: 'none', padding: '0.35rem 0.65rem', fontSize: '0.75rem' }}
+                  onClick={() => setHorizon(h)}
+                >
+                  {h}D Horizon
+                </button>
+              ))}
+            </div>
+          )}
+
           <button 
-            className="btn btn-secondary btn-sm"
-            onClick={() => { setSearchTerm(''); setCategoryFilter('All'); setStatusFilter('All'); }}
+            className="btn btn-secondary btn-sm" 
+            onClick={activeTab === 'intelligence' ? loadIntelligence : loadInventory}
+            disabled={activeTab === 'intelligence' ? isIntelligenceLoading : isLoading}
           >
-            Clear Filters
+            <RefreshCw size={14} className={(activeTab === 'intelligence' ? isIntelligenceLoading : isLoading) ? 'spin' : ''} />
+            <span>Refresh</span>
           </button>
         </div>
+      </div>
+
+      {/* INTELLIGENCE TAB VIEW */}
+      {activeTab === 'intelligence' && (
+        <>
+          {/* Summary Metric Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div className="card" style={{ padding: '1rem', borderLeft: '4px solid var(--primary-400)' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                Reorder Recommended
+              </div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary-400)', marginTop: '0.25rem' }}>
+                {totalReorderItems} Products
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                Required stock &gt; current stock
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: '1rem', borderLeft: '4px solid var(--danger-500)' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                Stockout Risk Buffer
+              </div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--danger-500)', marginTop: '0.25rem' }}>
+                {totalStockoutRisks} Products
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                Stock &lt; lead time demand + safety
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: '1rem', borderLeft: '4px solid var(--warning-500)' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                Overstock Risk Warning
+              </div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--warning-500)', marginTop: '0.25rem' }}>
+                {totalOverstocked} Products
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                Stock &gt; 1.5x 30-day velocity
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: '1rem', borderLeft: '4px solid var(--success-500)' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+                Decision Protocol
+              </div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff', marginTop: '0.25rem' }}>
+                Store Owner Decides
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--success-500)' }}>
+                Never auto-orders (MVP Locked)
+              </div>
+            </div>
+          </div>
+
+          {/* Intelligence Filters Bar */}
+          <div className="card" style={{ marginBottom: '1.5rem', padding: '0.75rem 1.25rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div className="search-input-wrapper" style={{ flex: 1, minWidth: '240px' }}>
+                <Search size={16} className="search-icon" />
+                <input
+                  type="text"
+                  className="form-input search-input"
+                  placeholder="Filter intelligence by product name or SKU..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <select
+                className="form-select"
+                style={{ width: 'auto', minWidth: '180px' }}
+                value={intelStatusFilter}
+                onChange={(e) => setIntelStatusFilter(e.target.value)}
+              >
+                <option value="All">All Recommendations</option>
+                <option value="REORDER">Action: REORDER Only</option>
+                <option value="STOCKOUT_RISK">High Stockout Risk</option>
+                <option value="OVERSTOCK">Overstocked Items</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Intelligence Table */}
+          {isIntelligenceLoading ? (
+            <div className="card" style={{ textAlign: 'center', padding: '3.5rem 1rem' }}>
+              <RefreshCw size={32} className="spin" style={{ margin: '0 auto 1rem', color: 'var(--primary-400)' }} />
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '0.25rem' }}>Computing Inventory Intelligence...</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Calculating lead-time demand and reorder quantities</p>
+            </div>
+          ) : intelligenceError ? (
+            <div className="error-banner">
+              <AlertCircle size={18} />
+              <div style={{ flex: 1 }}>{intelligenceError}</div>
+              <button className="btn btn-secondary btn-sm" onClick={loadIntelligence}>Retry</button>
+            </div>
+          ) : (
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div className="table-container">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Product & SKU</th>
+                      <th>Current Stock</th>
+                      <th>Lead Time</th>
+                      <th>Safety Stock</th>
+                      <th>Lead-Time Demand</th>
+                      <th>{horizon}D Forecast</th>
+                      <th>Stockout Risk</th>
+                      <th>Overstock Risk</th>
+                      <th>Recommended Reorder</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredIntelligence.map((item) => (
+                      <tr key={item.product_id}>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{item.name}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{item.sku} • {item.category}</div>
+                        </td>
+                        <td style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+                          {item.current_stock}
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                          {item.lead_time_days} days
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                          {item.safety_stock} units
+                        </td>
+                        <td style={{ color: '#818cf8', fontWeight: 600 }}>
+                          {item.lead_time_demand}
+                        </td>
+                        <td style={{ color: 'var(--primary-400)', fontWeight: 600 }}>
+                          {item.forecasted_demand}
+                        </td>
+                        <td>
+                          {item.stockout_risk ? (
+                            <span className="badge badge-out-of-stock" title={`Shortage gap: ${item.stockout_gap} units`}>
+                              Risk (-{item.stockout_gap})
+                            </span>
+                          ) : (
+                            <span className="badge badge-healthy">Protected</span>
+                          )}
+                        </td>
+                        <td>
+                          {item.overstock_risk ? (
+                            <span className="badge badge-low-stock" title={item.overstock_note}>
+                              Overstock
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Normal</span>
+                          )}
+                        </td>
+                        <td style={{ fontWeight: 700, fontSize: '1rem', color: item.recommended_quantity > 0 ? 'var(--primary-400)' : 'var(--text-muted)' }}>
+                          {item.recommended_quantity > 0 ? `+${item.recommended_quantity} units` : '0'}
+                        </td>
+                        <td>
+                          {item.recommendation_status === 'REORDER' ? (
+                            <span className="badge badge-healthy" style={{ background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', borderColor: 'rgba(99, 102, 241, 0.4)' }}>
+                              REORDER
+                            </span>
+                          ) : (
+                            <span className="badge" style={{ background: 'rgba(51, 65, 85, 0.4)', color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}>
+                              NO REORDER
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {!isLoading && !error && inventoryList.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="table-container">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>SKU</th>
-                  <th>Product Name</th>
-                  <th>Category</th>
-                  <th>Cost</th>
-                  <th>Selling Price</th>
-                  <th>Current Stock</th>
-                  <th>Safety Stock</th>
-                  <th>Lead Time</th>
-                  <th>Stock Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {inventoryList.map((item) => (
-                  <tr key={item.sku}>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      {item.sku}
-                    </td>
-                    <td style={{ fontWeight: 600 }}>{item.product_name}</td>
-                    <td>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                        {item.category}
-                      </span>
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)' }}>₹{item.cost_price.toFixed(2)}</td>
-                    <td style={{ fontWeight: 600 }}>₹{item.selling_price.toFixed(2)}</td>
-                    <td style={{ 
-                      fontWeight: 700, 
-                      fontSize: '1rem',
-                      color: item.status === 'Low Stock' ? 'var(--warning-500)' : item.status === 'Out of Stock' ? 'var(--danger-500)' : 'var(--text-primary)'
-                    }}>
-                      {item.current_stock}
-                    </td>
-                    <td style={{ color: 'var(--text-secondary)' }}>{item.safety_stock}</td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{item.lead_time_days} days</td>
-                    <td>
-                      <Badge status={item.status} />
-                    </td>
+      {/* CATALOG TAB VIEW (Existing Live Product List) */}
+      {activeTab === 'catalog' && (
+        <>
+          {summary && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div className="card" style={{ padding: '1rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Total Valuation</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--primary-400)', marginTop: '0.25rem' }}>
+                  ₹{Number(summary.total_valuation || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+              <div className="card" style={{ padding: '1rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Total Units</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 700, marginTop: '0.25rem' }}>
+                  {Number(summary.total_units || 0).toLocaleString()}
+                </div>
+              </div>
+              <div className="card" style={{ padding: '1rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Low Stock Alert</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--warning-500)', marginTop: '0.25rem' }}>
+                  {summary.low_stock_count || 0}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="table-container">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Product Name</th>
+                    <th>Category</th>
+                    <th>Cost</th>
+                    <th>Selling Price</th>
+                    <th>Current Stock</th>
+                    <th>Safety Stock</th>
+                    <th>Lead Time</th>
+                    <th>Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {inventoryList.map((item) => (
+                    <tr key={item.sku}>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.sku}</td>
+                      <td style={{ fontWeight: 600 }}>{item.product_name}</td>
+                      <td>{item.category}</td>
+                      <td>₹{item.cost_price.toFixed(2)}</td>
+                      <td style={{ fontWeight: 600 }}>₹{item.selling_price.toFixed(2)}</td>
+                      <td style={{ fontWeight: 700, color: item.status === 'Low Stock' ? 'var(--warning-500)' : 'var(--text-primary)' }}>{item.current_stock}</td>
+                      <td>{item.safety_stock}</td>
+                      <td>{item.lead_time_days} days</td>
+                      <td><Badge status={item.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

@@ -160,3 +160,39 @@ export const updateForecastActuals = () => {
     method: 'POST',
   });
 };
+
+// -----------------------------------------------------------------------------
+// Inventory Intelligence & Reorder Recommendations APIs
+// -----------------------------------------------------------------------------
+export const getInventoryIntelligence = (params = {}) => {
+  const query = new URLSearchParams();
+  if (params.days) query.append('days', params.days);
+
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/inventory/intelligence${queryString}`);
+};
+
+export const getSingleInventoryIntelligence = (productId, params = {}) => {
+  const query = new URLSearchParams();
+  if (params.days) query.append('days', params.days);
+
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/inventory/intelligence/${productId}${queryString}`);
+};
+
+export const getRecommendations = (params = {}) => {
+  const query = new URLSearchParams();
+  if (params.days) query.append('days', params.days);
+  if (params.status) query.append('status', params.status);
+
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/recommendations${queryString}`);
+};
+
+export const getSingleRecommendation = (productId, params = {}) => {
+  const query = new URLSearchParams();
+  if (params.days) query.append('days', params.days);
+
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/recommendations/${productId}${queryString}`);
+};
