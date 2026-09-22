@@ -1,6 +1,7 @@
 /**
- * SmartRetail API Client service
- * Centralizes all fetch calls from the React frontend to the Flask REST API.
+ * SmartRetail Centralized API Client
+ * Manages all REST communication between React and the Flask backend.
+ * Never connects directly to MySQL — always routes through Flask REST APIs.
  */
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -22,15 +23,56 @@ export async function fetchApi(endpoint, options = {}) {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+      const errorMessage = data.message || data.error || `HTTP Error ${response.status}`;
+      throw new Error(errorMessage);
     }
 
     return data;
   } catch (error) {
-    console.error(`API Request failed for ${url}:`, error);
+    console.error(`[API Error] Request failed for ${url}:`, error.message);
     throw error;
   }
 }
 
-// Health check call
+// -----------------------------------------------------------------------------
+// Health Check APIs
+// -----------------------------------------------------------------------------
 export const getBackendHealth = () => fetchApi('/health');
+export const getDbHealth = () => fetchApi('/health/db');
+
+// -----------------------------------------------------------------------------
+// Products APIs
+// -----------------------------------------------------------------------------
+export const getProducts = (params = {}) => {
+  const query = new URLSearchParams();
+  if (params.category && params.category !== 'All') query.append('category', params.category);
+  if (params.search) query.append('search', params.search);
+  if (params.supplier_id) query.append('supplier_id', params.supplier_id);
+  
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/products${queryString}`);
+};
+
+export const getProductById = (productId) => fetchApi(`/products/${productId}`);
+
+// -----------------------------------------------------------------------------
+// Inventory APIs
+// -----------------------------------------------------------------------------
+export const getInventory = (params = {}) => {
+  const query = new URLSearchParams();
+  if (params.status && params.status !== 'All') query.append('status', params.status);
+  if (params.category && params.category !== 'All') query.append('category', params.category);
+  if (params.search) query.append('search', params.search);
+
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/inventory${queryString}`);
+};
+
+export const getInventoryByProductId = (productId) => fetchApi(`/inventory/${productId}`);
+
+export const updateInventoryStock = (productId, stockData) => {
+  return fetchApi(`/inventory/${productId}`, {
+    method: 'PUT',
+    body: JSON.stringify(stockData),
+  });
+};
