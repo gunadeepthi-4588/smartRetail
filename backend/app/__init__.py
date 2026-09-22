@@ -22,16 +22,21 @@ def create_app(config_name=None):
 
     # Register blueprints
     from app.routes.health import health_bp
+    from app.routes.products import products_bp
+    from app.routes.inventory import inventory_bp
+
     app.register_blueprint(health_bp, url_prefix="/api")
+    app.register_blueprint(products_bp, url_prefix="/api")
+    app.register_blueprint(inventory_bp, url_prefix="/api")
 
     # Global 404 error handler
     @app.errorhandler(404)
     def resource_not_found(e):
-        return jsonify({"error": "Resource not found", "status": 404}), 404
+        return jsonify({"status": "error", "message": "Resource not found"}), 404
 
     # Global 500 error handler
     @app.errorhandler(500)
     def internal_server_error(e):
-        return jsonify({"error": "Internal server error", "status": 500}), 500
+        return jsonify({"status": "error", "message": "Internal server error"}), 500
 
     return app
