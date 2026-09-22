@@ -1,6 +1,7 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 from config import config_by_name
+from app.db import init_app as init_db_app
 import os
 
 def create_app(config_name=None):
@@ -12,6 +13,9 @@ def create_app(config_name=None):
 
     app = Flask(__name__)
     app.config.from_object(config_by_name.get(config_name, config_by_name["development"]))
+
+    # Initialize Database teardown handling
+    init_db_app(app)
 
     # Enable Cross-Origin Resource Sharing for React frontend communication
     CORS(app, resources={r"/api/*": {"origins": "*"}})
