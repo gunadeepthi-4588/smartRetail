@@ -76,3 +76,25 @@ export const updateInventoryStock = (productId, stockData) => {
     body: JSON.stringify(stockData),
   });
 };
+
+// -----------------------------------------------------------------------------
+// Sales & POS APIs
+// -----------------------------------------------------------------------------
+export const createSale = (saleData) => {
+  return fetchApi('/sales', {
+    method: 'POST',
+    body: JSON.stringify(saleData),
+  });
+};
+
+export const getSales = (params = {}) => {
+  const query = new URLSearchParams();
+  if (params.payment_method && params.payment_method !== 'All') query.append('payment_method', params.payment_method);
+  if (params.receipt) query.append('receipt', params.receipt);
+  if (params.limit) query.append('limit', params.limit);
+
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/sales${queryString}`);
+};
+
+export const getSale = (saleId) => fetchApi(`/sales/${saleId}`);
