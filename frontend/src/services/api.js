@@ -130,3 +130,33 @@ export const getCategoryPerformance = (params = {}) => {
   const queryString = query.toString() ? `?${query.toString()}` : '';
   return fetchApi(`/analytics/category-performance${queryString}`);
 };
+
+// -----------------------------------------------------------------------------
+// Machine Learning Demand Forecasting APIs
+// -----------------------------------------------------------------------------
+export const generateForecast = (forecastData) => {
+  return fetchApi('/forecast', {
+    method: 'POST',
+    body: JSON.stringify(forecastData),
+  });
+};
+
+export const getForecasts = (params = {}) => {
+  const query = new URLSearchParams();
+  if (params.product_id) query.append('product_id', params.product_id);
+  if (params.horizon_days) query.append('horizon_days', params.horizon_days);
+  if (params.limit) query.append('limit', params.limit);
+
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/forecast${queryString}`);
+};
+
+export const getProductForecast = (productId, horizonDays = 7) => {
+  return fetchApi(`/forecast/${productId}?horizon_days=${horizonDays}`);
+};
+
+export const updateForecastActuals = () => {
+  return fetchApi('/forecast/update-actuals', {
+    method: 'POST',
+  });
+};
