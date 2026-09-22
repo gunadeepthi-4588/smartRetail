@@ -28,6 +28,7 @@ def create_app(config_name=None):
     from app.routes.analytics import analytics_bp
     from app.routes.forecast import forecast_bp
     from app.routes.recommendations import recommendations_bp
+    from app.routes.monitoring import monitoring_bp
 
     app.register_blueprint(health_bp, url_prefix="/api")
     app.register_blueprint(products_bp, url_prefix="/api")
@@ -36,6 +37,7 @@ def create_app(config_name=None):
     app.register_blueprint(analytics_bp, url_prefix="/api")
     app.register_blueprint(forecast_bp, url_prefix="/api")
     app.register_blueprint(recommendations_bp, url_prefix="/api")
+    app.register_blueprint(monitoring_bp, url_prefix="/api")
 
     # Global 404 error handler
     @app.errorhandler(404)

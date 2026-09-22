@@ -196,3 +196,34 @@ export const getSingleRecommendation = (productId, params = {}) => {
   const queryString = query.toString() ? `?${query.toString()}` : '';
   return fetchApi(`/recommendations/${productId}${queryString}`);
 };
+
+// -----------------------------------------------------------------------------
+// Forecast Monitoring & Model Performance Tracking APIs
+// -----------------------------------------------------------------------------
+export const getForecastMonitoring = (params = {}) => {
+  const query = new URLSearchParams();
+  if (params.product_id) query.append('product_id', params.product_id);
+  if (params.days) query.append('days', params.days);
+  if (params.model_name) query.append('model_name', params.model_name);
+
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/monitoring/forecast${queryString}`);
+};
+
+export const getForecastMonitoringSummary = (params = {}) => {
+  const query = new URLSearchParams();
+  if (params.product_id) query.append('product_id', params.product_id);
+  if (params.days) query.append('days', params.days);
+  if (params.model_name) query.append('model_name', params.model_name);
+
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/monitoring/summary${queryString}`);
+};
+
+export const reconcileMonitoringActuals = (productId = null) => {
+  return fetchApi('/monitoring/reconcile', {
+    method: 'POST',
+    body: JSON.stringify(productId ? { product_id: productId } : {}),
+  });
+};
+
