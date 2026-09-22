@@ -98,3 +98,35 @@ export const getSales = (params = {}) => {
 };
 
 export const getSale = (saleId) => fetchApi(`/sales/${saleId}`);
+
+// -----------------------------------------------------------------------------
+// Analytics & Business Intelligence APIs
+// -----------------------------------------------------------------------------
+export const getAnalyticsDashboard = () => fetchApi('/analytics/dashboard');
+
+export const getSalesTrend = (days = 30) => fetchApi(`/analytics/sales-trend?days=${days}`);
+
+export const getTopProducts = (params = {}) => {
+  const query = new URLSearchParams();
+  if (params.days) query.append('days', params.days);
+  if (params.limit) query.append('limit', params.limit);
+
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/analytics/top-products${queryString}`);
+};
+
+export const getSlowMovers = (params = {}) => {
+  const query = new URLSearchParams();
+  if (params.days_threshold) query.append('days_threshold', params.days_threshold);
+
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/analytics/slow-movers${queryString}`);
+};
+
+export const getCategoryPerformance = (params = {}) => {
+  const query = new URLSearchParams();
+  if (params.days) query.append('days', params.days);
+
+  const queryString = query.toString() ? `?${query.toString()}` : '';
+  return fetchApi(`/analytics/category-performance${queryString}`);
+};

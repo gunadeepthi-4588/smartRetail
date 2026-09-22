@@ -25,11 +25,13 @@ def create_app(config_name=None):
     from app.routes.products import products_bp
     from app.routes.inventory import inventory_bp
     from app.routes.sales import sales_bp
+    from app.routes.analytics import analytics_bp
 
     app.register_blueprint(health_bp, url_prefix="/api")
     app.register_blueprint(products_bp, url_prefix="/api")
     app.register_blueprint(inventory_bp, url_prefix="/api")
     app.register_blueprint(sales_bp, url_prefix="/api")
+    app.register_blueprint(analytics_bp, url_prefix="/api")
 
     # Global 404 error handler
     @app.errorhandler(404)
