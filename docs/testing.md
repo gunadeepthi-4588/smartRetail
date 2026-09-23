@@ -13,6 +13,7 @@ The testing and quality assurance phase for **SmartRetail** provides end-to-end 
 | Test Module | Coverage Area | Status | Tests Count |
 | :--- | :--- | :--- | :--- |
 | `test_health.py` | API health, database connectivity ping, configuration safety | **PASSED** | 3 tests |
+| `test_auth.py` | Demo login, password hashing, invalid credentials, auth profile me endpoint | **PASSED** | 4 tests |
 | `test_products.py` | CRUD operations, unique SKU enforcement, price validation, foreign key deletion safety | **PASSED** | 8 tests |
 | `test_inventory.py` | Stock status calculation, current stock updates, boundary validations | **PASSED** | 5 tests |
 | `test_sales.py` | POS checkout, line item calculation, atomic transactions, insufficient stock protection, rollback | **PASSED** | 7 tests |
@@ -25,7 +26,7 @@ The testing and quality assurance phase for **SmartRetail** provides end-to-end 
 | `test_db_queries.py` | Thread-local connection pool, query execution, transaction commits & rollbacks | **PASSED** | 3 tests |
 | `test_system_validation.py` | Full vertical slice simulation, multi-item rollback, formula precision, security sanitization | **PASSED** | 7 tests |
 
-**Total Tests Executed:** **76 passed out of 76 tests (100% pass rate in 5.05s)**
+**Total Tests Executed:** **80 passed out of 80 tests (100% pass rate in ~10.0s)**
 
 ---
 

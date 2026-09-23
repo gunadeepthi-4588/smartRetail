@@ -33,7 +33,48 @@ This document provides a comprehensive reference for all REST API endpoints expo
 
 ---
 
-## 2. Product Catalog Management
+## 2. Authentication Endpoints
+
+### `POST /api/auth/login` (or `POST /api/login`)
+- **Description**: Authenticates store owner credentials using PBKDF2:SHA256 password hash comparison.
+- **Request Body**:
+```json
+{
+  "email": "owner@smartretail.com",
+  "password": "your_password_here"
+}
+```
+- **Response `200 OK`**:
+```json
+{
+  "status": "success",
+  "message": "Login successful",
+  "user": {
+    "user_id": 1,
+    "store_id": 1,
+    "username": "rajesh_owner",
+    "name": "Rajesh Kumar",
+    "email": "owner@smartretail.com",
+    "role": "Store Owner",
+    "store_name": "Metro Mart Superstore",
+    "currency": "INR",
+    "currency_symbol": "₹"
+  }
+}
+```
+
+### `GET /api/auth/me`
+- **Description**: Retrieves current store owner context for session validation.
+- **Query Parameters**: `user_id` *(optional int, defaults to 1)*
+- **Response `200 OK`**: Returns user profile payload.
+
+### `POST /api/auth/logout`
+- **Description**: Invalidates client session state.
+- **Response `200 OK`**: `{"status": "success", "message": "Logged out successfully"}`
+
+---
+
+## 3. Product Catalog Management
 
 ### `GET /api/products`
 - **Description**: Retrieves list of products with inventory metrics and supplier details.
