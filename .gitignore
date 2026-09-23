@@ -14,6 +14,8 @@ ENV/
 *.env
 !.env.example
 *.sqlite3
+*.db
+
 
 # Node / React
 frontend/node_modules/

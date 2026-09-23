@@ -37,6 +37,24 @@ export async function fetchApi(endpoint, options = {}) {
 }
 
 // -----------------------------------------------------------------------------
+// Authentication APIs
+// -----------------------------------------------------------------------------
+export const loginUser = (credentials) => {
+  return fetchApi('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(credentials),
+  });
+};
+
+export const logoutUser = () => {
+  return fetchApi('/auth/logout', {
+    method: 'POST',
+  });
+};
+
+export const getCurrentUser = (userId = 1) => fetchApi(`/auth/me?user_id=${userId}`);
+
+// -----------------------------------------------------------------------------
 // Health Check APIs
 // -----------------------------------------------------------------------------
 export const getBackendHealth = () => fetchApi('/health');

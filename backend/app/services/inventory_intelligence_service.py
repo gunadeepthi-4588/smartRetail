@@ -2,7 +2,7 @@ import math
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from app.db import query_db, get_db
+from app.db import query_db, get_db, execute_db
 from app.services.forecast_service import generate_and_save_forecast, get_stored_forecasts
 
 # Configurable Service-Level Parameters
@@ -293,14 +293,11 @@ def persist_reorder_recommendation(intelligence_data):
     Persists calculated recommendation to the MySQL `reorder_recommendations` table.
     Deduplication: Replaces previous recommendation for product on calculation_date.
     """
-    db = get_db()
-    cursor = db.cursor()
-
     product_id = intelligence_data["product_id"]
     calc_date = intelligence_data["calculation_date"]
 
     del_sql = "DELETE FROM reorder_recommendations WHERE product_id = %s AND calculation_date = %s"
-    cursor.execute(del_sql, (product_id, calc_date))
+    execute_db(del_sql, (product_id, calc_date))
 
     ins_sql = """
         INSERT INTO reorder_recommendations (
@@ -308,7 +305,7 @@ def persist_reorder_recommendation(intelligence_data):
             safety_stock, lead_time_demand, recommended_quantity, status
         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
     """
-    cursor.execute(ins_sql, (
+    execute_db(ins_sql, (
         product_id,
         calc_date,
         intelligence_data["forecasted_demand"],
@@ -319,7 +316,6 @@ def persist_reorder_recommendation(intelligence_data):
         "Pending"
     ))
 
-    db.commit()
 
 
 def get_all_inventory_intelligence(horizon_days=7):

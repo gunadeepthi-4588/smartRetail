@@ -401,7 +401,7 @@ def get_slow_movers():
                 "safety_stock": int(r["safety_stock"]),
                 "cost_price": cost,
                 "inventory_holding_value": holding_value,
-                "last_sale_date": last_date.strftime("%Y-%m-%d %H:%M:%S") if last_date else None,
+                "last_sale_date": last_date.strftime("%Y-%m-%d %H:%M:%S") if hasattr(last_date, "strftime") else (str(last_date) if last_date else None),
                 "days_since_last_sale": days_dormant if last_date else None,
                 "never_sold": last_date is None,
                 "recent_units_sold_30d": recent_units,

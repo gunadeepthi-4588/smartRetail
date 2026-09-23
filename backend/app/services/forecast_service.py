@@ -4,7 +4,7 @@ import joblib
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from app.db import query_db, get_db
+from app.db import query_db, get_db, execute_db
 from ml.features import generate_time_series_features, get_feature_columns
 
 _MODEL_CACHE = None
@@ -142,15 +142,12 @@ def generate_and_save_forecast(product_id, horizon_days=7):
         })
 
     # 5. Persist Predictions to Database
-    db = get_db()
-    cursor = db.cursor()
-
     # Deduplication strategy: Remove existing forecast run for (product_id, forecast_date, horizon_days)
     del_sql = """
         DELETE FROM forecasts 
         WHERE product_id = %s AND forecast_date = %s AND horizon_days = %s
     """
-    cursor.execute(del_sql, (product_id, forecast_run_date, horizon_days))
+    execute_db(del_sql, (product_id, forecast_run_date, horizon_days))
 
     # Insert fresh predictions
     ins_sql = """
@@ -158,7 +155,7 @@ def generate_and_save_forecast(product_id, horizon_days=7):
         VALUES (%s, %s, %s, %s, NULL, %s, %s)
     """
     for p in predictions:
-        cursor.execute(ins_sql, (
+        execute_db(ins_sql, (
             product_id,
             forecast_run_date,
             p["target_date"],
@@ -167,7 +164,6 @@ def generate_and_save_forecast(product_id, horizon_days=7):
             horizon_days
         ))
 
-    db.commit()
 
     total_projected_demand = sum(p["predicted_demand"] for p in predictions)
     avg_daily_demand = round(total_projected_demand / horizon_days, 2)

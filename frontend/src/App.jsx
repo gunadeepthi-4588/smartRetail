@@ -15,7 +15,18 @@ export default function App() {
     const path = window.location.pathname.replace(/^\//, '');
     return path || 'dashboard';
   });
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+
+  // User session state with localStorage persistence
+  const [user, setUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('smartretail_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const isAuthenticated = !!user;
 
   // Sync browser back/forward buttons with route state
   useEffect(() => {
@@ -33,16 +44,27 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  const handleLogin = () => {
-    setIsAuthenticated(true);
+  const handleLogin = (userData) => {
+    setUser(userData);
+    try {
+      localStorage.setItem('smartretail_user', JSON.stringify(userData));
+    } catch (e) {
+      console.warn('Failed saving user to localStorage', e);
+    }
     navigateTo('dashboard');
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
+    setUser(null);
+    try {
+      localStorage.removeItem('smartretail_user');
+    } catch (e) {
+      console.warn('Failed clearing user from localStorage', e);
+    }
     navigateTo('login');
   };
 
+  // Protected route guard: unauthenticated visits or explicit /login route
   if (!isAuthenticated || currentRoute === 'login') {
     return <Login onLoginSuccess={handleLogin} />;
   }
@@ -52,6 +74,7 @@ export default function App() {
       activeRoute={currentRoute}
       onNavigate={navigateTo}
       onLogout={handleLogout}
+      user={user}
     >
       {currentRoute === 'dashboard' && <Dashboard onNavigate={navigateTo} />}
       {currentRoute === 'inventory' && <Inventory />}
@@ -59,7 +82,8 @@ export default function App() {
       {currentRoute === 'analytics' && <Analytics />}
       {currentRoute === 'forecast' && <Forecast />}
       {currentRoute === 'monitoring' && <Monitoring />}
-      {currentRoute === 'settings' && <Settings />}
+      {currentRoute === 'settings' && <Settings user={user} />}
     </AppLayout>
   );
 }
+

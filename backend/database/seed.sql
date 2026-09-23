@@ -28,9 +28,9 @@ VALUES (1, 'Metro Mart Superstore', 'Rajesh Kumar', 'INR', '₹', '2026-01-01 08
 -- ------------------------------------------------------------------------------
 -- 2. USERS (Store Owner)
 -- ------------------------------------------------------------------------------
--- Password hash corresponds to 'admin123' using pbkdf2:sha256
+-- Demo account: owner@smartretail.com | Password hash for SmartRetail@123
 INSERT INTO users (user_id, store_id, username, password_hash, email, created_at)
-VALUES (1, 1, 'rajesh_owner', 'scrypt:32768:8:1$u7xK3jF$e5b6028a4be0907d0f3df9119eb34a9ef1c78201201d46b7a5bb0f4bb929286d88c037998b4ba3c38981ef8d40764d99', 'rajesh@metromart.com', '2026-01-01 08:30:00');
+VALUES (1, 1, 'rajesh_owner', 'pbkdf2:sha256:1000000$BdZ61SZ126aQxfRY$4158b14a266270a1bf746a363d50687a3e5ae7d924d4c958eaf9eece8c0e766c', 'owner@smartretail.com', '2026-01-01 08:30:00');
 
 -- ------------------------------------------------------------------------------
 -- 3. SUPPLIERS (With varying lead times)

@@ -35,8 +35,10 @@ def create_app(config_name=None):
     from app.routes.forecast import forecast_bp
     from app.routes.recommendations import recommendations_bp
     from app.routes.monitoring import monitoring_bp
+    from app.routes.auth import auth_bp
 
     app.register_blueprint(health_bp, url_prefix="/api")
+    app.register_blueprint(auth_bp, url_prefix="/api")
     app.register_blueprint(products_bp, url_prefix="/api")
     app.register_blueprint(inventory_bp, url_prefix="/api")
     app.register_blueprint(sales_bp, url_prefix="/api")

@@ -11,13 +11,19 @@ const PAGE_TITLES = {
   settings: 'Store Configuration & Diagnostics'
 };
 
-export default function Header({ activeRoute, storeName = 'Metro Mart Superstore', userName = 'Rajesh Kumar' }) {
+export default function Header({
+  activeRoute,
+  storeName = 'Metro Mart Superstore',
+  userName = 'Rajesh Kumar',
+  userRole = 'Store Owner'
+}) {
   const title = PAGE_TITLES[activeRoute] || 'SmartRetail';
   const initials = userName
     .split(' ')
+    .filter(Boolean)
     .map((n) => n[0])
     .join('')
-    .toUpperCase();
+    .toUpperCase() || 'RK';
 
   return (
     <header className="top-header">
@@ -34,7 +40,7 @@ export default function Header({ activeRoute, storeName = 'Metro Mart Superstore
           <div className="avatar">{initials}</div>
           <div className="user-info">
             <span className="user-name">{userName}</span>
-            <span className="user-role">Store Owner</span>
+            <span className="user-role">{userRole}</span>
           </div>
         </div>
       </div>
