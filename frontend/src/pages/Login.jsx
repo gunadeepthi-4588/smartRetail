@@ -29,7 +29,7 @@ export default function Login({ onLoginSuccess }) {
 
   const handleFillDemo = () => {
     setEmail('owner@smartretail.com');
-    setPassword('SmartRetail@123');
+    setPassword('');
     setError(null);
   };
 
@@ -146,7 +146,7 @@ export default function Login({ onLoginSuccess }) {
           fontSize: '0.8rem'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Demo Account Credentials</span>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Demo Account Info</span>
             <button
               type="button"
               onClick={handleFillDemo}
@@ -159,12 +159,12 @@ export default function Login({ onLoginSuccess }) {
                 textDecoration: 'underline'
               }}
             >
-              Fill Demo Info
+              Fill Demo Email
             </button>
           </div>
           <div style={{ color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
             <div><strong>Email:</strong> <code>owner@smartretail.com</code></div>
-            <div><strong>Password:</strong> <code>SmartRetail@123</code></div>
+            <div><strong>Role:</strong> <span>Store Owner (Metro Mart)</span></div>
           </div>
         </div>
 
