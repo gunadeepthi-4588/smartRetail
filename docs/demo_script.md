@@ -1,63 +1,96 @@
 # SmartRetail — 5–7 Minute College Demonstration Script
 
-This script provides a concise, professional step-by-step walkthrough for project evaluation, viva, or live demonstration.
+This script provides a structured, professional live demonstration sequence for faculty, evaluators, and viva panels.
 
 ---
 
-### Step 1: Login (0:00 – 0:45)
-- **Action**: Open `/login`. Click **Fill Demo Email** (fills `owner@smartretail.com`). Type store password and submit.
-- **Talking Point**: *"SmartRetail uses secure PBKDF2 password hashing and stores credentials safely in MySQL. Notice the automatic redirect to our authenticated store management dashboard."*
+### STEP 1 — Login (0:00 – 0:45)
+- **Action**: 
+  - Open `http://localhost:5173/login`.
+  - Click **Fill Demo Email** (populates `owner@smartretail.com`).
+  - Enter the demo password and click **Sign In**.
+- **Explanation**: 
+  - *"SmartRetail enforces secure authentication using industry-standard PBKDF2:SHA256 password hashing stored in MySQL. Notice that unauthenticated access is guarded, and upon successful authentication, the app loads the store owner context for Metro Mart Superstore."*
 
 ---
 
-### Step 2: Dashboard & Store KPIs (0:45 – 1:30)
-- **Action**: Show top KPI cards (Total Revenue, Gross Profit, Total Orders, Low Stock Alerts).
-- **Talking Point**: *"The dashboard displays live aggregated business health metrics calculated in real-time from our relational database, with immediate visibility into store inventory status."*
+### STEP 2 — Dashboard (0:45 – 1:30)
+- **Action**: 
+  - Walk through the main KPI summary cards (Total Revenue, Gross Profit, Total Orders, Active Low Stock Items).
+  - Show the Quick Stock Alert widget.
+- **Explanation**: 
+  - *"The dashboard aggregates live business KPIs directly from relational sales and inventory tables in MySQL. It gives the shop owner an immediate overview of sales velocity, financial health, and urgent inventory risks."*
 
 ---
 
-### Step 3: Inventory Management (1:30 – 2:15)
-- **Action**: Navigate to `/inventory`. Filter by category (e.g., Dairy, Staples) and stock status.
-- **Talking Point**: *"Here, store owners monitor stock levels, safety thresholds, and lead times across all catalog items."*
+### STEP 3 — Inventory Management (1:30 – 2:15)
+- **Action**: 
+  - Navigate to `/inventory`.
+  - Filter by category (e.g., *Dairy*, *Beverages*, *Staples*) and stock status (*Optimal*, *Low Stock*, *Overstock*).
+- **Explanation**: 
+  - *"The inventory module tracks catalog items, unit costs, selling prices, minimum stock thresholds, safety stocks, and supplier lead times. Every SKU has clear visibility into its current stock health."*
 
 ---
 
-### Step 4: Live Point-of-Sale (POS) Transaction (2:15 – 3:00)
-- **Action**: Navigate to `/sales`. Select a product, enter quantity, and click **Complete Sale**.
-- **Talking Point**: *"When a sale occurs, the Flask backend executes an atomic transaction that registers the receipt, line items, and immediately decrements inventory stock in MySQL with ACID integrity."*
+### STEP 4 — Point-of-Sale (POS) & Sales Transaction (2:15 – 3:00)
+- **Action**: 
+  - Navigate to `/sales`.
+  - Select a product (e.g., *Farm Fresh Whole Milk 1L*), enter quantity (e.g., *2*), and click **Complete Sale**.
+  - Show the generated receipt confirmation.
+  - Return to `/inventory` to show that the stock decreased immediately by 2 units.
+- **Explanation**: 
+  - *"When a sale occurs, the Flask backend executes an atomic ACID transaction that inserts the sale header, line items, and deducts inventory in MySQL simultaneously. If stock is insufficient, the transaction safely rolls back."*
 
 ---
 
-### Step 5: Real-Time Analytics (3:00 – 3:45)
-- **Action**: Navigate to `/analytics`. Point out the Sales Trend chart, Top Revenue Products, and Category Breakdown.
-- **Talking Point**: *"All sales immediately reflect in our financial analytics. We compute revenue, gross profit, and automatically flag slow-moving items with zero sales in the last 30 days."*
+### STEP 5 — Business Analytics (3:00 – 3:45)
+- **Action**: 
+  - Navigate to `/analytics`.
+  - Point out the 30-day Sales Trend chart, Top Best Sellers, Revenue Leaders, Gross Profit Leaders, Category Share, and 30-Day Slow Movers.
+- **Explanation**: 
+  - *"Our analytics engine calculates revenue ($Q \times P$), gross margin ($\text{Revenue} - \text{Cost}$), and flags slow-moving products with zero sales in the last 30 days to help reduce dead inventory capital."*
 
 ---
 
-### Step 6: Machine Learning Demand Forecasting (3:45 – 4:30)
-- **Action**: Navigate to `/forecast`. Select a product (e.g., Farm Fresh Whole Milk) and view the 7-day predicted demand trajectory.
-- **Talking Point**: *"SmartRetail uses a pre-trained Random Forest model trained on chronological lag and rolling features. It generates multi-step daily forecasts without requiring heavy runtime re-training."*
+### STEP 6 — Machine Learning Demand Forecasting (3:45 – 4:30)
+- **Action**: 
+  - Navigate to `/forecast`.
+  - Select a product (e.g., *Farm Fresh Whole Milk 1L*) and view the 7-day predicted demand trajectory.
+- **Explanation**: 
+  - *"SmartRetail uses a pre-trained Random Forest model trained on chronological lag features ($t-1, t-7, t-14, t-28$) and rolling statistical averages. It performs multi-step recursive forecasting without requiring slow re-training during normal browsing."*
 
 ---
 
-### Step 7 & 8: Inventory Risk & Reorder Recommendations (4:30 – 5:15)
-- **Action**: On `/inventory` or `/forecast`, view the Stockout / Overstock risk tags and recommended reorder quantities.
-- **Talking Point**: *"The system dynamically computes lead-time demand and safety stock buffers to pinpoint stockout risk and calculate exact reorder quantities."*
+### STEP 7 — Inventory Intelligence (4:30 – 5:15)
+- **Action**: 
+  - Highlight the Stockout Risk tag, Lead-Time Demand, Safety Stock buffer, and Recommended Order Quantity.
+- **Explanation**: 
+  - *"Raw predictions alone aren't enough for shop owners. The Inventory Intelligence module combines the forecast with supplier lead time (e.g. 3 days) and daily demand volatility ($\sigma$) to compute exact buffer stock and reorder requirements."*
 
 ---
 
-### Step 9: Transparent "Why?" Explainability (5:15 – 5:50)
-- **Action**: Click the **Why? (Explain)** button next to a reorder recommendation to open the calculation breakdown modal.
-- **Talking Point**: *"Rather than a black-box recommendation, we provide clear mathematical explainability showing forecasted demand, lead-time requirements, and safety stock gaps."*
+### STEP 8 — Transparent Explainability ("Why?" Modal) (5:15 – 5:50)
+- **Action**: 
+  - Click the **Why? (Explain)** button next to a reorder recommendation.
+  - Walk through the step-by-step mathematical breakdown modal.
+- **Explanation**: 
+  - *"Rather than an uninterpretable black box, we provide deterministic mathematical explainability: $\text{Recommended Quantity} = \max(0, \text{Required Stock} - \text{Current Stock})$. We emphasize that SmartRetail is an intelligent decision-support system that recommends replenishment but never automatically places supplier orders."*
 
 ---
 
-### Step 10: Forecast Accuracy Monitoring (5:50 – 6:30)
-- **Action**: Navigate to `/monitoring`. Show the Actual vs Predicted demand chart and summary error metrics (MAE, RMSE, WAPE %, Forecast Bias).
-- **Talking Point**: *"To ensure trustworthy AI, our monitoring module tracks model performance against actual sales, detecting demand drift and over/under-forecasting bias."*
+### STEP 9 — Forecast Monitoring & Accuracy Tracking (5:50 – 6:30)
+- **Action**: 
+  - Navigate to `/monitoring`.
+  - Show the Actual vs Predicted demand chart and summary error metrics (MAE, RMSE, WAPE %, and Forecast Bias).
+- **Explanation**: 
+  - *"To ensure trust and prevent model drift, our monitoring service compares past predictions against actual sales reconciled from MySQL, calculating Mean Absolute Error and tracking whether the model tends to over-forecast or under-forecast."*
 
 ---
 
-### Step 11: Secure Logout (6:30 – 7:00)
-- **Action**: Click **Logout** in the header. Attempt to open `/dashboard` directly and demonstrate that access is protected and redirects back to `/login`.
-- **Talking Point**: *"All protected views and APIs require active session authorization, preventing unauthorized access."*
+### STEP 10 — Logout & Route Protection (6:30 – 7:00)
+- **Action**: 
+  - Click **Logout** in the header.
+  - Attempt to manually navigate back to `/dashboard` in the address bar.
+  - Demonstrate that the user is immediately redirected to `/login`.
+- **Explanation**: 
+  - *"All frontend pages and backend REST APIs require authentication, ensuring store privacy and security. This completes our end-to-end SmartRetail demonstration."*
