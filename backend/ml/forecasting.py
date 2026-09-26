@@ -2,8 +2,9 @@ import pandas as pd
 import numpy as np
 from datetime import timedelta
 from ml.baselines import NaiveBaseline, MovingAverageBaseline
-from ml.models import RidgeDemandModel, RandomForestDemandModel
+from ml.models import RidgeDemandModel, RandomForestDemandModel, GradientBoostingDemandModel
 from ml.evaluation import evaluate_model_predictions
+
 
 def split_time_series_chronological(df, train_ratio=0.70, val_ratio=0.15, test_ratio=0.15):
     """
@@ -71,8 +72,10 @@ def evaluate_candidate_models(train_df, val_df, feature_cols):
         NaiveBaseline(),
         MovingAverageBaseline(window=7),
         RidgeDemandModel(alpha=1.0),
-        RandomForestDemandModel(n_estimators=50, max_depth=6, random_state=42)
+        RandomForestDemandModel(n_estimators=50, max_depth=6, random_state=42),
+        GradientBoostingDemandModel(n_estimators=50, max_depth=4, random_state=42)
     ]
+
 
     results = []
     trained_models = {}

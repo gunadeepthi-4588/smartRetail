@@ -16,6 +16,15 @@ ENV/
 *.sqlite3
 *.db
 
+# Datasets & Raw Data
+*.parquet
+*.csv
+data/
+data_raw/
+backend/data_raw/
+backend/data/
+
+
 
 # Node / React
 frontend/node_modules/

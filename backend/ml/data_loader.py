@@ -148,11 +148,52 @@ def validate_raw_sales_data(df):
 
     return clean_df, quality_report
 
+def load_sales_from_sqlite(db_path=None):
+    """Attempts to query the local SQLite database directly if present."""
+    if db_path is None:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        db_path = os.path.join(base_dir, "database", "smart_retail.db")
+
+    if not os.path.exists(db_path):
+        return None
+
+    try:
+        conn = sqlite3.connect(db_path)
+        query = """
+            SELECT 
+                s.sale_id,
+                s.sale_date,
+                s.receipt_number,
+                s.payment_method,
+                si.sale_item_id,
+                si.product_id,
+                p.sku,
+                p.name AS product_name,
+                p.category,
+                si.quantity,
+                si.unit_price,
+                si.unit_cost
+            FROM sales s
+            JOIN sale_items si ON s.sale_id = si.sale_id
+            JOIN products p ON si.product_id = p.product_id
+            ORDER BY s.sale_date ASC
+        """
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        if len(df) > 0:
+            return df
+    except Exception:
+        pass
+    return None
+
 def get_raw_sales_data():
     """Unified entry point to fetch and validate historical sales data."""
     df = load_sales_from_mysql()
+    if df is None or len(df) == 0:
+        df = load_sales_from_sqlite()
     if df is None or len(df) == 0:
         df = load_sales_from_sql_seed()
     
     clean_df, quality_report = validate_raw_sales_data(df)
     return clean_df, quality_report
+

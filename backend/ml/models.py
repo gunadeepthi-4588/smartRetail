@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.linear_model import Ridge, LinearRegression
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 
 class RidgeDemandModel:
     """
@@ -56,3 +56,35 @@ class RandomForestDemandModel:
     @property
     def feature_importances_(self):
         return self.model.feature_importances_
+
+
+class GradientBoostingDemandModel:
+    """
+    Gradient Boosting Regressor.
+    Sequential tree ensemble that minimizes residual errors.
+    """
+    def __init__(self, n_estimators=50, max_depth=4, learning_rate=0.1, random_state=42):
+        self.n_estimators = n_estimators
+        self.max_depth = max_depth
+        self.learning_rate = learning_rate
+        self.random_state = random_state
+        self.name = f"Gradient Boosting (trees={n_estimators}, depth={max_depth})"
+        self.model = GradientBoostingRegressor(
+            n_estimators=n_estimators,
+            max_depth=max_depth,
+            learning_rate=learning_rate,
+            random_state=random_state
+        )
+
+    def fit(self, X, y):
+        self.model.fit(X, y)
+        return self
+
+    def predict(self, X):
+        raw_preds = self.model.predict(X)
+        return np.maximum(0.0, raw_preds)
+
+    @property
+    def feature_importances_(self):
+        return self.model.feature_importances_
+

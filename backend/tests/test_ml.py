@@ -170,18 +170,20 @@ def test_candidate_models_and_baselines():
     train_df, val_df, test_df, _ = split_time_series_chronological(featured_df, 0.7, 0.15, 0.15)
     trained_models, comparison_df = evaluate_candidate_models(train_df, val_df, feature_cols)
 
-    assert len(trained_models) == 4
+    assert len(trained_models) == 5
     assert set(comparison_df["model_name"].values) == {
         "Naive (Lag-1)",
         "Moving Average (7-Day)",
         "Ridge Regression (alpha=1.0)",
-        "Random Forest (trees=50, depth=6)"
+        "Random Forest (trees=50, depth=6)",
+        "Gradient Boosting (trees=50, depth=4)"
     }
 
     best_model, best_metrics = select_best_model(trained_models, comparison_df)
     assert best_model is not None
     assert "mae" in best_metrics
     assert "wape" in best_metrics
+
 
     # Verify prediction output shape and non-negativity
     X_test = test_df[feature_cols]
