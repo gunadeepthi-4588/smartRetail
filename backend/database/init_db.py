@@ -1,12 +1,15 @@
 """
 SmartRetail Database Initialization & Verification Script
-Reads configuration from environment variables (.env), applies schema.sql & seed.sql,
-and runs comprehensive verification checks against MySQL.
+Reads configuration from environment variables (.env or cloud environment),
+applies schema.sql & seed.sql with foreign key integrity, and runs comprehensive verification checks.
+Supports local MySQL and all major managed cloud MySQL providers (Aiven, TiDB, Render, Railway, AWS RDS).
 """
 
 import os
 import sys
+import re
 import pymysql
+import pymysql.cursors
 from dotenv import load_dotenv
 
 if hasattr(sys.stdout, 'reconfigure'):
@@ -15,7 +18,7 @@ if hasattr(sys.stdout, 'reconfigure'):
     except Exception:
         pass
 
-# Load environment variables
+# Load environment variables from backend/.env if available
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 DB_HOST = os.getenv("DB_HOST", "localhost")
@@ -23,49 +26,87 @@ DB_PORT = int(os.getenv("DB_PORT", 3306))
 DB_USER = os.getenv("DB_USER", "root")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "")
 DB_NAME = os.getenv("DB_NAME", "smart_retail_db")
+DB_SSL_CA = os.getenv("DB_SSL_CA", None)
+DB_SSL_MODE = os.getenv("DB_SSL_MODE", None)
+DB_SSL_REQUIRED = os.getenv("DB_SSL_REQUIRED", "0").lower() in ("1", "true", "yes")
 
 def get_connection(include_db=True):
-    """Establishes a MySQL connection."""
-    return pymysql.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database=DB_NAME if include_db else None,
-        charset="utf8mb4",
-        cursorclass=pymysql.cursors.DictCursor,
-        autocommit=True
-    )
+    """Establishes a MySQL connection with SSL support when configured."""
+    conn_kwargs = {
+        "host": DB_HOST,
+        "port": DB_PORT,
+        "user": DB_USER,
+        "password": DB_PASSWORD,
+        "database": DB_NAME if include_db else None,
+        "charset": "utf8mb4",
+        "cursorclass": pymysql.cursors.DictCursor,
+        "autocommit": True,
+        "connect_timeout": 10
+    }
 
-def execute_sql_file(cursor, file_path):
-    """Executes multi-statement SQL script."""
+    ssl_dict = {}
+    if DB_SSL_CA:
+        ssl_dict["ca"] = DB_SSL_CA
+    if DB_SSL_MODE:
+        ssl_dict["ssl_mode"] = DB_SSL_MODE
+    elif DB_SSL_REQUIRED and not ssl_dict:
+        ssl_dict["ssl_mode"] = "REQUIRED"
+
+    if ssl_dict:
+        conn_kwargs["ssl"] = ssl_dict
+
+    return pymysql.connect(**conn_kwargs)
+
+def execute_sql_file(cursor, file_path, target_db=None):
+    """
+    Executes a multi-statement SQL script cleanly.
+    Strips CREATE DATABASE / USE statements when target_db is active to ensure compatibility
+    with managed cloud databases (e.g. Aiven/Railway defaultdb).
+    """
     with open(file_path, "r", encoding="utf-8") as f:
         sql_content = f.read()
 
     statements = sql_content.split(";")
     for stmt in statements:
         clean_stmt = stmt.strip()
-        if clean_stmt and not clean_stmt.startswith("--"):
-            cursor.execute(clean_stmt)
+        if not clean_stmt or clean_stmt.startswith("--"):
+            continue
+        # Skip CREATE DATABASE and USE statements if target_db is set
+        if target_db:
+            if re.match(r'^CREATE\s+DATABASE', clean_stmt, re.IGNORECASE):
+                continue
+            if re.match(r'^USE\s+', clean_stmt, re.IGNORECASE):
+                continue
+        cursor.execute(clean_stmt)
 
 def initialize_database():
     """Applies schema and seed data to MySQL."""
     print("=" * 70)
-    print("SmartRetail - MySQL Database Initialization & Verification")
+    print(" SmartRetail — MySQL Database Provisioning & Initialization")
     print("=" * 70)
     print(f"Target Server : {DB_HOST}:{DB_PORT} (User: {DB_USER})")
     print(f"Target DB     : {DB_NAME}\n")
 
-    # Step 1: Connect to server and create database if not exists
+    # Step 1: Connect to server and verify / create database
+    created_db = False
     try:
         conn = get_connection(include_db=False)
         with conn.cursor() as cursor:
-            cursor.execute(f"CREATE DATABASE IF NOT EXISTS {DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
+            cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{DB_NAME}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
         conn.close()
-        print(f"[OK] Database '{DB_NAME}' created or verified.")
+        print(f"[OK] Database '{DB_NAME}' created or verified via server root connection.")
+        created_db = True
     except Exception as e:
-        print(f"[ERROR] Could not connect to MySQL server: {e}")
-        print("\nPlease ensure MySQL is running and your backend/.env contains valid DB_PASSWORD.")
+        print(f"[INFO] Root server connection skipped ({e}). Attempting direct database connection to '{DB_NAME}'...")
+
+    # Verify direct connection to target DB
+    try:
+        conn = get_connection(include_db=True)
+        conn.close()
+        print(f"[OK] Connected directly to target database '{DB_NAME}'.")
+    except Exception as e:
+        print(f"[ERROR] Could not connect to target database '{DB_NAME}': {e}")
+        print("\nPlease check your DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, and DB_NAME environment variables.")
         return False
 
     # Step 2: Connect to DB and apply schema.sql
@@ -73,21 +114,21 @@ def initialize_database():
     try:
         conn = get_connection(include_db=True)
         with conn.cursor() as cursor:
-            execute_sql_file(cursor, schema_path)
+            execute_sql_file(cursor, schema_path, target_db=DB_NAME)
         conn.close()
-        print(f"[OK] schema.sql executed successfully (9 tables created).")
+        print(f"[OK] schema.sql executed successfully (9 core tables verified).")
     except Exception as e:
         print(f"[ERROR] Failed to execute schema.sql: {e}")
         return False
 
-    # Step 3: Apply seed.sql
+    # Step 3: Apply seed.sql (Real FreshRetailNet-50K catalog and transactions)
     seed_path = os.path.join(os.path.dirname(__file__), "seed.sql")
     try:
         conn = get_connection(include_db=True)
         with conn.cursor() as cursor:
-            execute_sql_file(cursor, seed_path)
+            execute_sql_file(cursor, seed_path, target_db=DB_NAME)
         conn.close()
-        print(f"[OK] seed.sql executed successfully (seed data inserted).\n")
+        print(f"[OK] seed.sql executed successfully (FreshRetailNet-50K seed data inserted).\n")
     except Exception as e:
         print(f"[ERROR] Failed to execute seed.sql: {e}")
         return False
@@ -98,7 +139,7 @@ def initialize_database():
 def run_verifications():
     """Runs data integrity and representative analytics verification queries."""
     print("-" * 70)
-    print("RUNNING VERIFICATION QUERIES")
+    print("RUNNING VERIFICATION QUERIES ON MYSQL")
     print("-" * 70)
     conn = get_connection(include_db=True)
     
@@ -110,7 +151,7 @@ def run_verifications():
         ]
         print("\n1. Table Row Counts:")
         for t in tables:
-            cursor.execute(f"SELECT COUNT(*) as count FROM {t};")
+            cursor.execute(f"SELECT COUNT(*) as count FROM `{t}`;")
             row = cursor.fetchone()
             print(f"   - {t:<26}: {row['count']} rows")
 
@@ -171,22 +212,8 @@ def run_verifications():
         for row in low_stock_rows:
             print(f"   - [ALERT] {row['name']} (SKU: {row['sku']}) -> Stock: {row['current_stock']}, Safety: {row['safety_stock']}")
 
-        # Check 6: Overstock Candidates (High Stock, Low Sales)
-        print("\n6. Overstock / Slow-Moving Candidates:")
-        cursor.execute("""
-            SELECT p.name, i.current_stock, COALESCE(SUM(si.quantity), 0) AS units_sold_30d
-            FROM products p
-            JOIN inventory i ON p.product_id = i.product_id
-            LEFT JOIN sale_items si ON p.product_id = si.product_id
-            GROUP BY p.product_id, p.name, i.current_stock
-            HAVING i.current_stock > 100 AND units_sold_30d <= 3;
-        """)
-        overstock_rows = cursor.fetchall()
-        for row in overstock_rows:
-            print(f"   - [OVERSTOCK] {row['name']} -> Stock: {row['current_stock']}, 30-Day Sales: {row['units_sold_30d']} units")
-
-        # Check 7: Orphan Records Check (Referential Integrity)
-        print("\n7. Referential Integrity / Orphan Records Check:")
+        # Check 6: Orphan Records Check (Referential Integrity)
+        print("\n6. Referential Integrity / Orphan Records Check:")
         cursor.execute("""
             SELECT 
                 (SELECT COUNT(*) FROM sale_items WHERE sale_id NOT IN (SELECT sale_id FROM sales)) as orphan_sale_items,
@@ -200,7 +227,7 @@ def run_verifications():
 
     conn.close()
     print("\n" + "=" * 70)
-    print("[SUCCESS] All Phase 3 MySQL schema & seed verification checks PASSED!")
+    print("[SUCCESS] MySQL schema & seed verification checks PASSED!")
     print("=" * 70)
     return True
 

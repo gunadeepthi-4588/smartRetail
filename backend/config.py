@@ -17,8 +17,12 @@ class Config:
     DB_USER = os.getenv("DB_USER", "root")
     DB_PASSWORD = os.getenv("DB_PASSWORD", "")
     DB_NAME = os.getenv("DB_NAME", "smart_retail_db")
+    DB_SSL_CA = os.getenv("DB_SSL_CA", None)
+    DB_SSL_MODE = os.getenv("DB_SSL_MODE", None)
+    DB_SSL_REQUIRED = os.getenv("DB_SSL_REQUIRED", "0").lower() in ("1", "true", "yes")
 
     # Security & CORS Settings
+
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")
 
     # Business Logic Defaults

@@ -20,12 +20,13 @@ SmartRetail is designed as a modular 3-tier cloud application:
 │   - Inventory Intelligence & Explainable Reorders       │
 │   - Forecast Accuracy Monitoring                        │
 └───────────────────────────┬─────────────────────────────┘
-                            │ Parameterized MySQL Connection
+                            │ Parameterized MySQL Connection (with SSL)
                             ▼
 ┌─────────────────────────────────────────────────────────┐
 │                 Managed MySQL Database                  │
-│       (Aiven / PlanetScale / Railway / Render DB)       │
+│       (Aiven / TiDB / PlanetScale / Railway / Render)   │
 │   - 9 Core Relational Tables                            │
+│   - Real FreshRetailNet-50K Product & Sales History     │
 │   - Foreign Key Integrity & Atomic ACID Transactions    │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -40,95 +41,133 @@ SmartRetail is optimized for lightweight, low-cost/student-tier managed cloud pl
 
 | Tier | Recommended Providers | Role / Specs |
 | :--- | :--- | :--- |
-| **Frontend** | **Vercel** / **Netlify** / **Cloudflare Pages** | Static single-page React bundle hosting with CDN distribution. |
+| **Frontend** | **Vercel** / **Netlify** / **Cloudflare Pages** | Static single-page React bundle hosting with global CDN. |
 | **Backend** | **Render** / **Railway** / **Fly.io** | Managed Python application web service running `gunicorn`. |
-| **Database** | **Aiven MySQL** / **Railway MySQL** / **Render MySQL** | Managed MySQL 8.0+ instance with SSL and automated backups. |
+| **Database** | **Aiven MySQL** / **TiDB Cloud** / **Railway MySQL** / **Render DB** | Managed MySQL 8.0+ instance with TLS/SSL encryption and automated backups. |
 
 ---
 
 ## 3. Environment Variables Reference
 
-### Backend Environment Variables (`backend/.env` or Cloud Dashboard)
+### Backend Environment Variables (`backend/.env` or Cloud Provider Dashboard)
 
-| Variable | Required | Example Value | Description |
+| Variable | Required | Example Placeholder Value | Description |
 | :--- | :---: | :--- | :--- |
 | `FLASK_ENV` | Yes | `production` | Enables production mode optimizations and disables debug reloading. |
 | `FLASK_DEBUG` | Yes | `0` | Disables debug mode and suppresses stack traces on errors. |
 | `PORT` | Yes | `5000` (or injected by platform) | Port for the WSGI server to listen on. |
-| `SECRET_KEY` | Yes | `f8b29c0a1e3d4...` | Cryptographic key for session/security protection. |
-| `DB_HOST` | Yes | `mysql-xxxx.aivencloud.com` | Hostname of the managed cloud MySQL database. |
-| `DB_PORT` | Yes | `3306` | Port of the cloud MySQL server. |
-| `DB_USER` | Yes | `avnadmin` | MySQL database user. |
-| `DB_PASSWORD` | Yes | `YourSecurePassword` | MySQL database user password. |
-| `DB_NAME` | Yes | `smart_retail_db` | Name of the SmartRetail database. |
-| `CORS_ORIGINS` | Yes | `https://smartretail.vercel.app` | Comma-separated list of authorized frontend origins. |
+| `SECRET_KEY` | Yes | `your-cryptographic-secret-key-here` | Cryptographic key for session/security protection. |
+| `DB_HOST` | Yes | `your-managed-mysql-host.example.com` | Hostname of the managed cloud MySQL database. |
+| `DB_PORT` | Yes | `3306` (or provider port e.g. `24536`) | Port of the cloud MySQL server. |
+| `DB_USER` | Yes | `your_db_username` | MySQL database user. |
+| `DB_PASSWORD` | Yes | `your_db_password` | MySQL database user password. |
+| `DB_NAME` | Yes | `smart_retail_db` (or `defaultdb`) | Name of the database provisioned on the cloud instance. |
+| `DB_SSL_MODE` | Conditional | `REQUIRED` | SSL connection mode (required by Aiven, TiDB, AWS RDS). |
+| `DB_SSL_CA` | Optional | `/path/to/ca.pem` | Path to custom SSL Certificate Authority bundle if required. |
+| `CORS_ORIGINS` | Yes | `https://your-app.vercel.app,http://localhost:5173` | Comma-separated list of authorized frontend origins. |
 | `DEFAULT_CURRENCY` | No | `INR` | Store default currency code. |
 | `DEFAULT_CURRENCY_SYMBOL` | No | `₹` | Store default currency symbol. |
+| `DEFAULT_SAFETY_STOCK_DAYS` | No | `7` | Default safety stock duration in days. |
+| `DEFAULT_LEAD_TIME_DAYS` | No | `3` | Default supplier replenishment lead time. |
 
-### Frontend Environment Variables (`frontend/.env` or Cloud Dashboard)
+### Frontend Environment Variables (`frontend/.env` or Vercel Dashboard)
 
-| Variable | Required | Example Value | Description |
+| Variable | Required | Example Placeholder Value | Description |
 | :--- | :---: | :--- | :--- |
-| `VITE_API_BASE_URL` | Yes | `https://smartretail-api.onrender.com/api` | Full HTTPS base URL to the deployed Flask backend API. |
+| `VITE_API_BASE_URL` | Yes | `https://your-backend-service.onrender.com/api` | Full HTTPS base URL to the deployed Flask backend API. |
 | `VITE_APP_NAME` | No | `SmartRetail` | Application display brand name. |
+| `VITE_DEFAULT_CURRENCY` | No | `INR` | Currency code for UI display. |
 | `VITE_DEFAULT_CURRENCY_SYMBOL`| No | `₹` | Currency symbol for UI formatting. |
 
 ---
 
-## 4. Production Database Setup & Migration
+## 4. Fresh Cloud MySQL Database Setup & Initialization
 
-Follow this sequential procedure to provision and seed the production database:
+Follow this step-by-step procedure to provision and seed a fresh managed cloud MySQL database:
 
-1. **Create Managed MySQL Database**:
-   Create a new MySQL database instance named `smart_retail_db` on your chosen cloud provider (e.g., Aiven or Railway).
-2. **Execute Database Schema**:
-   Run `backend/database/schema.sql` against the database to create all 9 tables, indexes, and foreign key constraints:
-   ```bash
-   mysql -h <DB_HOST> -P <DB_PORT> -u <DB_USER> -p <DB_NAME> < backend/database/schema.sql
-   ```
-3. **Execute Initial Seed Data (Optional for Demo)**:
-   Run `backend/database/seed.sql` to populate sample suppliers, products, inventory records, and historical sales transactions:
-   ```bash
-   mysql -h <DB_HOST> -P <DB_PORT> -u <DB_USER> -p <DB_NAME> < backend/database/seed.sql
-   ```
-4. **Automated Setup Alternative**:
-   Configure `backend/.env` with your cloud database credentials and run the built-in database setup script:
-   ```bash
-   python backend/database/init_db.py
-   ```
+### Step 1: Provision the Managed MySQL Instance
+1. Create a MySQL 8.0+ instance on your chosen cloud provider (**Aiven**, **TiDB Cloud**, **Railway**, or **Render**).
+2. Note your connection credentials from the cloud dashboard:
+   - **Host** (`DB_HOST`)
+   - **Port** (`DB_PORT`)
+   - **User** (`DB_USER`)
+   - **Password** (`DB_PASSWORD`)
+   - **Database Name** (`DB_NAME`, e.g. `smart_retail_db` or `defaultdb`)
+   - **SSL Requirements** (e.g. `DB_SSL_MODE=REQUIRED`)
+3. Ensure the cloud provider's IP allowlist permits connections from your deployment IP or `0.0.0.0/0` (secured with strong password and TLS).
+
+### Step 2: Set Environment Variables
+In your local `backend/.env` (for initial provisioning) or directly in your cloud hosting dashboard:
+```env
+DB_HOST=your-managed-mysql-host.example.com
+DB_PORT=3306
+DB_USER=your_db_username
+DB_PASSWORD=your_db_password
+DB_NAME=smart_retail_db
+DB_SSL_MODE=REQUIRED
+```
+
+### Step 3: Run the Database Initialization Script
+Execute the single unified initialization and verification script:
+```bash
+python backend/database/init_db.py
+```
+
+#### What `init_db.py` Executes Automatically:
+1. **Verifies Connectivity**: Establishes secure TLS/SSL connection to `DB_HOST:DB_PORT`.
+2. **Applies Schema DDL (`schema.sql`)**: Creates the 9 core relational tables in proper dependency order:
+   - `stores`
+   - `users` (Store owner credentials)
+   - `suppliers` (4 suppliers with lead times)
+   - `products` (20 real products mapped from FreshRetailNet-50K)
+   - `inventory` (Stock master, min/max/safety levels)
+   - `sales` (97 daily POS receipts)
+   - `sale_items` (1,910 real transaction items)
+   - `forecasts` (Prediction records table)
+   - `reorder_recommendations` (Explainable reorder recommendations table)
+3. **Applies Seed Data (`seed.sql`)**: Populates the real FreshRetailNet-50K dataset (Store 18, 20 products across 8 categories, 97 consecutive days of sales).
+4. **Runs Verification Checks**:
+   - Table row counts
+   - Product-Inventory joins
+   - Financial totals (₹1,069,725.00 revenue, ₹328,630.00 gross profit, 30.72% margin)
+   - Low-stock risk detection
+   - Orphan records / referential integrity (0 orphan records)
+
+### Step 4: (Optional) Re-ingesting Raw FreshRetailNet-50K Dataset
+If you ever want to re-download or regenerate the dataset from scratch from Hugging Face:
+```bash
+python backend/database/import_freshretail.py
+```
+> **Note**: Raw dataset parquet files are stored in `data_raw/` and are strictly gitignored (`.gitignore`). They are **not** committed to Git or required for cloud deployment because `seed.sql` and model artifacts are pre-built and committed.
 
 ---
 
-## 5. Machine Learning Model Artifact Deployment
+## 5. Machine Learning Model Artifacts
 
-- **Model Location**: `backend/ml/saved_models/demand_forecast_model.joblib` (~181 KB)
-- **Metadata Location**: `backend/ml/saved_models/model_metadata.json`
-- **Dynamic Path Resolution**: `backend/app/services/forecast_service.py` dynamically resolves model paths relative to the Python module root:
-  ```python
-  base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-  saved_dir = os.path.join(base_dir, "ml", "saved_models")
-  model_path = os.path.join(saved_dir, "demand_forecast_model.joblib")
-  ```
-- **Portability**: Because the pre-trained Random Forest model artifact is committed directly to the repository, the cloud backend loads predictions immediately upon startup without requiring runtime training.
+- **Model Artifact**: `backend/ml/saved_models/demand_forecast_model.joblib`
+- **Model Metadata**: `backend/ml/saved_models/model_metadata.json`
+- **Stockout Annotations**: `backend/ml/saved_models/stockout_annotations.json`
+- **Portability**: The pre-trained time-series model artifact is committed to the repository. The cloud backend loads predictions immediately upon startup without requiring runtime training.
+- **Retraining Pipeline**: If needed, run `python -m ml.train` from `backend/` to re-evaluate models on the latest dataset.
 
 ---
 
-## 6. Backend Deployment (e.g. Render / Railway)
+## 6. Backend Web Service Deployment (e.g. Render)
 
-1. Connect your Git repository to **Render** or **Railway**.
-2. Select **Web Service** with runtime **Python 3**.
-3. Configure the build and start commands:
-   - **Root Directory**: `backend` (or repository root with path specified)
+1. Connect your Git repository to **Render** (or **Railway** / **Fly.io**).
+2. Create a new **Web Service** with runtime **Python 3**.
+3. Configure settings:
+   - **Root Directory**: `backend`
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120`
-4. Add all environment variables from Section 3 in the platform dashboard.
+4. Add all environment variables from Section 3 in the Render dashboard.
 5. Deploy and verify the health checks.
 
 ---
 
-## 7. Frontend Deployment (e.g. Vercel / Netlify)
+## 7. Frontend Deployment (e.g. Vercel)
 
-1. Connect your Git repository to **Vercel** or **Netlify**.
+1. Connect your Git repository to **Vercel** (or **Netlify**).
 2. Configure project settings:
    - **Root Directory**: `frontend`
    - **Framework Preset**: `Vite`
@@ -140,37 +179,33 @@ Follow this sequential procedure to provision and seed the production database:
 
 ---
 
-## 8. Verification & Health Checks
+## 8. Post-Deployment Verification & Health Checks
 
-After deployment, verify the operational status of all tiers:
+Verify operational status across all tiers using `curl`:
 
-1. **Backend Health**:
+1. **Backend Service Health**:
    ```bash
    curl -i https://your-backend-domain/api/health
    ```
-   *Expected: HTTP 200 `{"status": "healthy", "service": "smartretail-backend"}`*
+   *Expected: HTTP 200 `{"status": "online", "service": "smartretail-backend"}`*
 
-2. **Database Health**:
+2. **Database Connectivity Health**:
    ```bash
    curl -i https://your-backend-domain/api/health/db
    ```
-   *Expected: HTTP 200 `{"status": "connected", "database_name": "smart_retail_db", "ping": true}`*
+   *Expected: HTTP 200 `{"status": "connected", "engine": "mysql", "ping": true}`*
 
-3. **Products Endpoint**:
+3. **Products Catalog**:
    ```bash
    curl -i https://your-backend-domain/api/products
    ```
-   *Expected: HTTP 200 with JSON product array.*
+   *Expected: HTTP 200 with 20 real FreshRetailNet products.*
 
-4. **Frontend Navigation**:
-   Open your deployed frontend URL in a browser and test all views:
-   - `/dashboard`: Financial KPIs and inventory health summaries
-   - `/inventory`: Product stock management and explainable recommendation modals
-   - `/sales`: Real-time POS checkout with atomic inventory reduction
-   - `/analytics`: Revenue, gross profit, and category performance charts
-   - `/forecast`: 7-day and 30-day demand prediction generation
-   - `/monitoring`: MAE, RMSE, WAPE %, Bias metrics, and actual vs predicted charts
-   - `/settings`: Store profile and system diagnostics
+4. **Inventory Intelligence & Reorders**:
+   ```bash
+   curl -i https://your-backend-domain/api/inventory/intelligence?days=7
+   ```
+   *Expected: HTTP 200 with stockout risk, overstock risk, and explainable reorder recommendations.*
 
 ---
 
@@ -178,7 +213,7 @@ After deployment, verify the operational status of all tiers:
 
 | Issue | Cause | Solution |
 | :--- | :--- | :--- |
-| **CORS Error (`No 'Access-Control-Allow-Origin' header`)** | `CORS_ORIGINS` on backend does not match the deployed frontend URL. | Add your exact frontend URL (including `https://`, without trailing slash) to `CORS_ORIGINS` in the backend environment variables. |
-| **Database Connection Refused / Timeout** | Cloud MySQL IP whitelist or incorrect `DB_HOST`/`DB_PORT`. | Ensure the managed database allows connections from your backend IP range (or `0.0.0.0/0` with SSL enabled). |
-| **Forecast Generation 500 Error** | Model artifact file missing or invalid permissions. | Ensure `backend/ml/saved_models/demand_forecast_model.joblib` was pushed to Git and exists in the deployment bundle. |
-| **SPA 404 Error on Page Refresh** | Static hosting web server does not route subpaths to `index.html`. | Add a rewrite rule in `vercel.json` or `_redirects` (`/* /index.html 200`). |
+| **`Access denied for user ... to database`** | Cloud provider restricted user permissions to a specific database name. | Set `DB_NAME` in `.env` to the exact database name assigned by your cloud provider (e.g. `defaultdb` or `smart_retail_db`). `init_db.py` automatically adapts. |
+| **`SSL connection error / SSL required`** | Cloud MySQL requires TLS encryption. | Set `DB_SSL_MODE=REQUIRED` in backend environment variables. |
+| **CORS Error (`No 'Access-Control-Allow-Origin'`)** | Backend `CORS_ORIGINS` does not match frontend domain. | Add your deployed frontend URL (e.g. `https://your-app.vercel.app`) to `CORS_ORIGINS` in backend environment variables. |
+| **SPA 404 on Refresh** | Static hosting does not route subpaths to `index.html`. | Add a rewrite rule in `frontend/vercel.json` (`{ "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }`). |

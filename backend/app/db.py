@@ -106,19 +106,33 @@ def get_db():
     if 'db' not in g:
         # Try MySQL connection first
         try:
-            g.db = pymysql.connect(
-                host=current_app.config['DB_HOST'],
-                port=current_app.config['DB_PORT'],
-                user=current_app.config['DB_USER'],
-                password=current_app.config['DB_PASSWORD'],
-                database=current_app.config['DB_NAME'],
-                charset='utf8mb4',
-                cursorclass=pymysql.cursors.DictCursor,
-                autocommit=False
-            )
+            conn_kwargs = {
+                'host': current_app.config['DB_HOST'],
+                'port': current_app.config['DB_PORT'],
+                'user': current_app.config['DB_USER'],
+                'password': current_app.config['DB_PASSWORD'],
+                'database': current_app.config['DB_NAME'],
+                'charset': 'utf8mb4',
+                'cursorclass': pymysql.cursors.DictCursor,
+                'autocommit': False,
+                'connect_timeout': 5
+            }
+            ssl_dict = {}
+            if current_app.config.get('DB_SSL_CA'):
+                ssl_dict['ca'] = current_app.config['DB_SSL_CA']
+            if current_app.config.get('DB_SSL_MODE'):
+                ssl_dict['ssl_mode'] = current_app.config['DB_SSL_MODE']
+            elif current_app.config.get('DB_SSL_REQUIRED', False) and not ssl_dict:
+                ssl_dict['ssl_mode'] = 'REQUIRED'
+
+            if ssl_dict:
+                conn_kwargs['ssl'] = ssl_dict
+
+            g.db = pymysql.connect(**conn_kwargs)
             g.db_type = 'mysql'
         except Exception as e:
             logger.warning(f"MySQL connection unavailable ({e}). Falling back to local SQLite database.")
+
             sqlite_path = _get_sqlite_db_path()
             conn = sqlite3.connect(sqlite_path)
             conn.row_factory = _sqlite_dict_factory
@@ -241,17 +255,30 @@ def check_db_health():
     
     # Check MySQL connectivity directly
     try:
-        conn = pymysql.connect(
-            host=current_app.config['DB_HOST'],
-            port=current_app.config['DB_PORT'],
-            user=current_app.config['DB_USER'],
-            password=current_app.config['DB_PASSWORD'],
-            database=current_app.config['DB_NAME'],
-            charset='utf8mb4',
-            cursorclass=pymysql.cursors.DictCursor,
-            connect_timeout=3
-        )
+        conn_kwargs = {
+            'host': current_app.config['DB_HOST'],
+            'port': current_app.config['DB_PORT'],
+            'user': current_app.config['DB_USER'],
+            'password': current_app.config['DB_PASSWORD'],
+            'database': current_app.config['DB_NAME'],
+            'charset': 'utf8mb4',
+            'cursorclass': pymysql.cursors.DictCursor,
+            'connect_timeout': 5
+        }
+        ssl_dict = {}
+        if current_app.config.get('DB_SSL_CA'):
+            ssl_dict['ca'] = current_app.config['DB_SSL_CA']
+        if current_app.config.get('DB_SSL_MODE'):
+            ssl_dict['ssl_mode'] = current_app.config['DB_SSL_MODE']
+        elif current_app.config.get('DB_SSL_REQUIRED', False) and not ssl_dict:
+            ssl_dict['ssl_mode'] = 'REQUIRED'
+
+        if ssl_dict:
+            conn_kwargs['ssl'] = ssl_dict
+
+        conn = pymysql.connect(**conn_kwargs)
         with conn.cursor() as cursor:
+
             cursor.execute("SELECT 1 AS ping;")
             ping = cursor.fetchone()
             cursor.execute("""
