@@ -1,0 +1,105 @@
+flowchart TD
+    %% Styling & Theme Classes
+    classDef userLayer fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    classDef clientLayer fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#f8fafc;
+    classDef apiLayer fill:#0f172a,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+    classDef dbLayer fill:#0f172a,stroke:#f59e0b,stroke-width:2px,color:#f8fafc;
+    classDef mlLayer fill:#0f172a,stroke:#8b5cf6,stroke-width:2px,color:#f8fafc;
+    classDef intelLayer fill:#0f172a,stroke:#ec4899,stroke-width:2px,color:#f8fafc;
+    classDef decisionLayer fill:#1e293b,stroke:#06b6d4,stroke-width:2px,color:#f8fafc;
+    classDef deployLayer fill:#1e293b,stroke:#64748b,stroke-width:1px,color:#e2e8f0,stroke-dasharray: 5 5;
+    classDef guardrail fill:#7f1d1d,stroke:#ef4444,stroke-width:2px,color:#fecaca;
+
+    %% 1. User Layer
+    subgraph UserGroup["👤 Store Operator & Decision Maker"]
+        User["Store Owner / Manager<br/><b>(Human-in-the-Loop)</b>"]:::userLayer
+    end
+
+    %% 2. Frontend Layer (React + Vite)
+    subgraph FrontendGroup["💻 React 18 + Vite Frontend (Hosted on Vercel)"]
+        direction TB
+        UI_Auth["Authentication View<br/><i>(JWT / Session)</i>"]:::clientLayer
+        UI_Dash["Executive Dashboard<br/><i>(Latest Day Revenue)</i>"]:::clientLayer
+        UI_Inv["Inventory Management<br/><i>(Stock Master)</i>"]:::clientLayer
+        UI_POS["POS Sales Register<br/><i>(Receipts & Deduction)</i>"]:::clientLayer
+        UI_Analytics["Retail Analytics<br/><i>(Trends, Margins, Top SKUs)</i>"]:::clientLayer
+        UI_Forecast["Demand Forecasting<br/><i>(7D & 30D Curves)</i>"]:::clientLayer
+        UI_Intel["Inventory Intelligence<br/><i>(Explainable Reorders)</i>"]:::clientLayer
+        UI_Monitor["Forecast Monitoring<br/><i>(MAE, RMSE, WAPE)</i>"]:::clientLayer
+    end
+
+    %% 3. Backend REST API Layer (Flask 3.0)
+    subgraph BackendGroup["⚙️ Flask REST API Backend (Hosted on Render via Gunicorn)"]
+        direction TB
+        API_Auth["/api/auth<br/><i>(Owner Login & Session)</i>"]:::apiLayer
+        API_Products["/api/products<br/><i>(Catalog CRUD & SKUs)</i>"]:::apiLayer
+        API_Inv["/api/inventory<br/><i>(Stock Master & Safety)</i>"]:::apiLayer
+        API_Sales["/api/sales<br/><i>(Atomic POS Transactions)</i>"]:::apiLayer
+        API_Analytics["/api/analytics<br/><i>(Dashboard & Sales Trend)</i>"]:::apiLayer
+        API_Forecast["/api/forecast<br/><i>(Predictive Demand)</i>"]:::apiLayer
+        API_Intel["/api/inventory/intelligence<br/><i>(Reorder Engine)</i>"]:::apiLayer
+        API_Monitor["/api/monitoring<br/><i>(Accuracy & Error Drift)</i>"]:::apiLayer
+    end
+
+    %% 4. Managed Database Layer (TiDB Cloud)
+    subgraph DatabaseGroup["🗄️ Managed Relational Database (TiDB Cloud / MySQL 8.0)"]
+        direction TB
+        DB_Entities["<b>9 Normalized ACID Relational Tables</b><br/>• stores &nbsp;&nbsp;• users &nbsp;&nbsp;• suppliers<br/>• products &nbsp;&nbsp;• inventory &nbsp;&nbsp;• sales<br/>• sale_items &nbsp;&nbsp;• forecasts &nbsp;&nbsp;• reorder_recommendations"]:::dbLayer
+    end
+
+    %% 5. Data Analytics & ML Forecasting Pipeline
+    subgraph DataMLGroup["🧠 Data Analytics & ML Forecasting Engine (Pandas, NumPy, Scikit-Learn)"]
+        direction TB
+        DP_Agg["<b>Data Cleaning & Daily Demand Aggregation</b><br/>• Missing Days Grid &nbsp;&nbsp;• Latent Demand Correction"]:::mlLayer
+        DP_Feat["<b>Time-Series Feature Engineering</b><br/>• Lags: 1, 7, 14, 28 &nbsp;&nbsp;• Rolling Stats: 7D, 14D, 30D<br/>• Day-of-Week & Weekend Indicators"]:::mlLayer
+        subgraph ModelEval["Model Evaluation & Selection"]
+            M_Naive["Naive Baseline"]:::mlLayer
+            M_MA["<b>7-Day Moving Average<br/>(Selected Production Baseline)</b>"]:::mlLayer
+            M_Ridge["Ridge Regression"]:::mlLayer
+            M_GB["Gradient Boosting"]:::mlLayer
+            M_RF["Random Forest"]:::mlLayer
+        end
+        DP_Pred["<b>Recursive Horizon Forecasts</b><br/>• 7-Day & 30-Day Multi-Step Demand Curves"]:::mlLayer
+    end
+
+    %% 6. Inventory Intelligence & Explainability Layer
+    subgraph IntelGroup["💡 Inventory Intelligence & Explainable Decision Engine"]
+        direction TB
+        Risk_Stockout["<b>Stockout Risk Detection</b><br/>Current Stock &lt; Lead-Time Demand + Safety Stock"]:::intelLayer
+        Risk_Overstock["<b>Overstock Risk Detection</b><br/>Current Stock &gt; 1.5 × 30-Day Sales Velocity"]:::intelLayer
+        Formula_Required["<b>Required Stock Calculation</b><br/>Required Stock = Forecast Demand + Safety Stock"]:::intelLayer
+        Formula_Reorder["<b>Recommended Reorder Quantity</b><br/>Reorder = max(0, Required Stock - Current Stock - Stock on Order)"]:::intelLayer
+        Explain_Modal["<b>Explainability Reasoning Generator</b><br/>Mathematical Breakdown + Input Parameter Audit Trail"]:::intelLayer
+    end
+
+    %% 7. Human Decision Support Output
+    subgraph DecisionGroup["📊 Decision-Support & Governance Protocol"]
+        direction TB
+        Decision_Output["<b>Store Owner Action Center</b><br/>• Latest Day Revenue & Financial KPIs<br/>• Explainable Reorder Advice<br/>• Critical Stockout & Overstock Badges"]:::decisionLayer
+        Guardrail["🛡️ <b>Strict Governance Rule</b><br/>• NO AUTOMATIC ORDER PLACEMENT<br/>• 100% HUMAN-IN-THE-LOOP APPROVAL"]:::guardrail
+    end
+
+    %% 8. Deployment Architecture Overview
+    subgraph DeployOverview["☁️ Production Cloud Hosting Architecture"]
+        direction LR
+        Dep_Vercel["<b>Vercel</b><br/>React 18 SPA (Vite)"]:::deployLayer
+        Dep_Render["<b>Render</b><br/>Python Flask (Gunicorn)"]:::deployLayer
+        Dep_TiDB["<b>TiDB Cloud</b><br/>MySQL 8.0 Protocol"]:::deployLayer
+        Dep_Vercel -->|HTTPS REST| Dep_Render
+        Dep_Render -->|TLS / SSL| Dep_TiDB
+    end
+
+    %% Inter-Layer Connections
+    User <-->|Browser UI Interaction| FrontendGroup
+    FrontendGroup <-->|Secure HTTPS REST APIs| BackendGroup
+    BackendGroup <-->|Parameterized SQL Transactions| DatabaseGroup
+    DatabaseGroup -->|Historical FreshRetailNet-50K Sales| DP_Agg
+    DP_Agg --> DP_Feat
+    DP_Feat --> ModelEval
+    ModelEval --> M_MA
+    M_MA --> DP_Pred
+    DP_Pred --> IntelGroup
+    DatabaseGroup -->|Live Stock & Lead Times| IntelGroup
+    IntelGroup --> Decision_Output
+    Decision_Output --> Guardrail
+    Guardrail -.->|Informs Decision| User

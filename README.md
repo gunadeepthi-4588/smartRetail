@@ -15,6 +15,23 @@
 
 ---
 
+## 🏗️ System Architecture
+
+SmartRetail follows an end-to-end decision-support architecture connecting retail sales data, analytics, demand forecasting, inventory risk detection, and explainable reorder recommendations.
+
+![SmartRetail System Architecture](docs/smartretail-system-architecture.png)
+
+### Deployment Architecture
+
+- **Frontend:** React + Vite deployed on **Vercel**
+- **Backend:** Flask REST API deployed on **Render**
+- **Database:** MySQL-compatible **TiDB Cloud**
+- **ML/Data Processing:** Pandas, NumPy, Scikit-learn
+
+> **Important Governance Protocol:** SmartRetail provides recommendations for human review and does not automatically place purchase orders.
+
+---
+
 ## 🚀 Live Demo
 
 - **Live Web Application:** [https://smart-retail-eta.vercel.app](https://smart-retail-eta.vercel.app)
