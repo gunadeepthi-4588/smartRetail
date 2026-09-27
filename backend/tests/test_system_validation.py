@@ -83,8 +83,10 @@ def test_full_business_workflow_simulation(client):
     mock_slow = {"slow_moving_count": 0}
 
     def an_side_effect(sql, params=None, one=False):
-        if "DATE(sale_date) = CURDATE()" in sql:
-            return mock_today if one else [mock_today]
+        if "MAX(DATE(sale_date))" in sql:
+            return {"max_date": "2026-09-21"} if one else [{"max_date": "2026-09-21"}]
+        elif "latest_revenue" in sql or "DATE(sale_date) =" in sql:
+            return {"latest_revenue": 675.0, "latest_transactions": 2} if one else [{"latest_revenue": 675.0, "latest_transactions": 2}]
         elif "revenue_30d" in sql:
             return mock_30d if one else [mock_30d]
         elif "slow_moving_count" in sql:
@@ -97,6 +99,7 @@ def test_full_business_workflow_simulation(client):
         analytics_res = client.get("/api/analytics/dashboard")
         assert analytics_res.status_code == 200
         an_data = analytics_res.get_json()["data"]
+        assert an_data["financial_kpis"]["latest_day_revenue"] == 675.0
         assert an_data["financial_kpis"]["today_revenue"] == 675.0
         assert an_data["financial_kpis"]["gross_profit_30d"] == 225.0
 

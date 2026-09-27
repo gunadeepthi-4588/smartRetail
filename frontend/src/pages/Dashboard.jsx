@@ -157,9 +157,9 @@ export default function Dashboard({ onNavigate }) {
       {/* KPI Cards */}
       <div className="kpi-grid">
         <KpiCard
-          title="Today's Revenue"
-          value={loading ? '...' : formatCurrency(fk.today_revenue)}
-          subtext={`${fk.today_transactions || 0} orders today`}
+          title="Latest Day Revenue"
+          value={loading ? '...' : formatCurrency(fk.latest_day_revenue ?? fk.today_revenue)}
+          subtext={fk.latest_sales_date ? `${fk.latest_day_transactions ?? fk.today_transactions ?? 0} orders (${fk.latest_sales_date})` : `${fk.latest_day_transactions ?? fk.today_transactions ?? 0} orders`}
           icon={DollarSign}
           iconBg="rgba(16, 185, 129, 0.12)"
           iconColor="#10b981"

@@ -57,19 +57,30 @@ def get_connection(include_db=True):
 
     return pymysql.connect(**conn_kwargs)
 
+def strip_sql_comments(sql_text):
+    """Strips SQL line comments (-- and #) and block comments (/* */)."""
+    sql_text = re.sub(r'/\*.*?\*/', '', sql_text, flags=re.DOTALL)
+    clean_lines = []
+    for line in sql_text.splitlines():
+        line_clean = re.sub(r'--.*$', '', line)
+        line_clean = re.sub(r'#.*$', '', line_clean)
+        clean_lines.append(line_clean)
+    return "\n".join(clean_lines)
+
 def execute_sql_file(cursor, file_path, target_db=None):
     """
     Executes a multi-statement SQL script cleanly.
-    Strips CREATE DATABASE / USE statements when target_db is active to ensure compatibility
-    with managed cloud databases (e.g. Aiven/Railway defaultdb).
+    Strips SQL comments first so statements with header comments are not accidentally skipped.
+    Strips CREATE DATABASE / USE statements when target_db is active.
     """
     with open(file_path, "r", encoding="utf-8") as f:
         sql_content = f.read()
 
-    statements = sql_content.split(";")
+    clean_sql = strip_sql_comments(sql_content)
+    statements = clean_sql.split(";")
     for stmt in statements:
         clean_stmt = stmt.strip()
-        if not clean_stmt or clean_stmt.startswith("--"):
+        if not clean_stmt:
             continue
         # Skip CREATE DATABASE and USE statements if target_db is set
         if target_db:
@@ -111,12 +122,23 @@ def initialize_database():
 
     # Step 2: Connect to DB and apply schema.sql
     schema_path = os.path.join(os.path.dirname(__file__), "schema.sql")
+    expected_tables = [
+        "stores", "users", "suppliers", "products", "inventory",
+        "sales", "sale_items", "forecasts", "reorder_recommendations"
+    ]
     try:
         conn = get_connection(include_db=True)
         with conn.cursor() as cursor:
             execute_sql_file(cursor, schema_path, target_db=DB_NAME)
+            cursor.execute("SHOW TABLES;")
+            found_tables = [list(r.values())[0].lower() for r in cursor.fetchall()]
         conn.close()
-        print(f"[OK] schema.sql executed successfully (9 core tables verified).")
+
+        missing = [t for t in expected_tables if t.lower() not in found_tables]
+        if missing:
+            print(f"[ERROR] schema.sql executed but missing expected tables: {missing}")
+            return False
+        print(f"[OK] schema.sql executed successfully (All {len(found_tables)} core tables verified in database).")
     except Exception as e:
         print(f"[ERROR] Failed to execute schema.sql: {e}")
         return False

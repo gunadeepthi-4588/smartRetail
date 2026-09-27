@@ -12,8 +12,9 @@ def client():
             yield client
 
 def test_get_dashboard_kpis(client):
-    """Verifies GET /api/analytics/dashboard aggregates revenue, profit, units, and inventory health."""
-    mock_today = {"today_revenue": 1620.0, "today_transactions": 2}
+    """Verifies GET /api/analytics/dashboard aggregates revenue, profit, units, and inventory health anchored to latest sales date."""
+    mock_max_date = {"max_date": "2024-07-02"}
+    mock_latest = {"latest_revenue": 1620.0, "latest_transactions": 2}
     mock_30d = {
         "revenue_30d": 37685.0,
         "gross_profit_30d": 11493.0,
@@ -29,8 +30,10 @@ def test_get_dashboard_kpis(client):
     mock_slow = {"slow_moving_count": 2}
 
     def side_effect(sql, params=None, one=False):
-        if "DATE(sale_date) = CURDATE()" in sql:
-            return mock_today if one else [mock_today]
+        if "MAX(DATE(sale_date))" in sql:
+            return mock_max_date if one else [mock_max_date]
+        elif "latest_revenue" in sql:
+            return mock_latest if one else [mock_latest]
         elif "revenue_30d" in sql:
             return mock_30d if one else [mock_30d]
         elif "slow_moving_count" in sql:
@@ -45,7 +48,10 @@ def test_get_dashboard_kpis(client):
         data = res.get_json()["data"]
 
         # Verify Financial KPIs
+        assert data["financial_kpis"]["latest_day_revenue"] == 1620.0
         assert data["financial_kpis"]["today_revenue"] == 1620.0
+        assert data["financial_kpis"]["latest_sales_date"] == "2024-07-02"
+        assert data["financial_kpis"]["latest_day_transactions"] == 2
         assert data["financial_kpis"]["revenue_30d"] == 37685.0
         assert data["financial_kpis"]["gross_profit_30d"] == 11493.0
         assert data["financial_kpis"]["units_sold_30d"] == 247
@@ -60,8 +66,28 @@ def test_get_dashboard_kpis(client):
         assert data["inventory_kpis"]["healthy_stock_count"] == 1
         assert data["inventory_kpis"]["slow_moving_count"] == 2
 
+def test_get_dashboard_kpis_empty_db(client):
+    """Verifies GET /api/analytics/dashboard safely returns zeroes when database has no sales."""
+    def side_effect(sql, params=None, one=False):
+        if "MAX(DATE(sale_date))" in sql:
+            return {"max_date": None} if one else [{"max_date": None}]
+        elif "FROM products p" in sql and "JOIN inventory i" in sql:
+            return []
+        return None
+
+    with patch("app.routes.analytics.query_db", side_effect=side_effect):
+        res = client.get("/api/analytics/dashboard")
+        assert res.status_code == 200
+        data = res.get_json()["data"]
+        assert data["financial_kpis"]["latest_day_revenue"] == 0.0
+        assert data["financial_kpis"]["today_revenue"] == 0.0
+        assert data["financial_kpis"]["latest_sales_date"] is None
+        assert data["financial_kpis"]["revenue_30d"] == 0.0
+        assert data["financial_kpis"]["units_sold_30d"] == 0
+
 def test_sales_trend_time_range(client):
     """Verifies GET /api/analytics/sales-trend handles 7, 30, and 90 day ranges and fills missing dates."""
+    mock_max_date = {"max_date": "2026-09-21"}
     mock_trend_rows = [
         {
             "sale_date_str": "2026-09-20",
@@ -78,7 +104,12 @@ def test_sales_trend_time_range(client):
             "daily_transactions": 3
         }
     ]
-    with patch("app.routes.analytics.query_db", return_value=mock_trend_rows):
+    def side_effect(sql, params=None, one=False):
+        if "MAX(DATE(sale_date))" in sql:
+            return mock_max_date if one else [mock_max_date]
+        return mock_trend_rows
+
+    with patch("app.routes.analytics.query_db", side_effect=side_effect):
         res = client.get("/api/analytics/sales-trend?days=7")
         assert res.status_code == 200
         json_data = res.get_json()
@@ -121,7 +152,13 @@ def test_top_products_distinct_rankings(client):
         }
     ]
 
-    with patch("app.routes.analytics.query_db", return_value=mock_products):
+    mock_max_date = {"max_date": "2024-07-02"}
+    def side_effect(sql, params=None, one=False):
+        if "MAX(DATE(sale_date))" in sql:
+            return mock_max_date if one else [mock_max_date]
+        return mock_products
+
+    with patch("app.routes.analytics.query_db", side_effect=side_effect):
         res = client.get("/api/analytics/top-products?days=30&limit=3")
         assert res.status_code == 200
         data = res.get_json()["data"]
@@ -141,6 +178,7 @@ def test_top_products_distinct_rankings(client):
 
 def test_slow_movers_calculation(client):
     """Verifies GET /api/analytics/slow-movers flags dormant inventory with holding valuation."""
+    mock_max_date = {"max_date": "2026-07-10"}
     mock_slow_rows = [
         {
             "product_id": 15,
@@ -170,7 +208,12 @@ def test_slow_movers_calculation(client):
         }
     ]
 
-    with patch("app.routes.analytics.query_db", return_value=mock_slow_rows):
+    def side_effect(sql, params=None, one=False):
+        if "MAX(DATE(sale_date))" in sql:
+            return mock_max_date if one else [mock_max_date]
+        return mock_slow_rows
+
+    with patch("app.routes.analytics.query_db", side_effect=side_effect):
         res = client.get("/api/analytics/slow-movers?days_threshold=30")
         assert res.status_code == 200
         json_data = res.get_json()
@@ -190,6 +233,7 @@ def test_slow_movers_calculation(client):
 
 def test_category_performance(client):
     """Verifies GET /api/analytics/category-performance aggregates revenue and margin by category."""
+    mock_max_date = {"max_date": "2024-07-02"}
     mock_cats = [
         {
             "category": "Grains & Staples",
@@ -207,7 +251,12 @@ def test_category_performance(client):
         }
     ]
 
-    with patch("app.routes.analytics.query_db", return_value=mock_cats):
+    def side_effect(sql, params=None, one=False):
+        if "MAX(DATE(sale_date))" in sql:
+            return mock_max_date if one else [mock_max_date]
+        return mock_cats
+
+    with patch("app.routes.analytics.query_db", side_effect=side_effect):
         res = client.get("/api/analytics/category-performance?days=30")
         assert res.status_code == 200
         json_data = res.get_json()
